@@ -56,7 +56,7 @@ export async function createRevisionSheet(coursId: string) {
   if (!cours) redirect("/cours");
 
   const response = await fetch(
-    `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/api/generate-revision-sheet`,
+    `${process.env.NEXT_PUBLIC_APP_URL}/api/generate-revision-sheet`,
     {
       method: "POST",
       headers: {
@@ -105,7 +105,7 @@ export async function createQuiz(coursId: string) {
   if (!cours) redirect("/cours");
 
   const response = await fetch(
-    `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/api/generate-quiz`,
+    `${process.env.NEXT_PUBLIC_APP_URL}/api/generate-quiz`,
     {
       method: "POST",
       headers: {
