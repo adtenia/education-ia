@@ -317,7 +317,7 @@ export default function ImportPage() {
 
   const mobileUploadUrl =
   qrSessionId
-    ? `http://192.168.1.167:3000/mobile-upload/${qrSessionId}`
+    ? `${process.env.NEXT_PUBLIC_APP_URL}/mobile-upload/${qrSessionId}`
     : "";
 
   return (
@@ -329,6 +329,7 @@ export default function ImportPage() {
 
         <div className="mt-8 rounded-3xl bg-white p-10 shadow">
           <h1 className="text-4xl font-bold text-slate-900">
+
             Importer un cours
           </h1>
 
