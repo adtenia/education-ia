@@ -31,6 +31,7 @@ export async function POST(request: Request) {
     const imageContents = images.map((image: ImageInput) => ({
       type: "input_image" as const,
       image_url: `data:${image.mimeType};base64,${image.imageBase64}`,
+      detail: "auto" as const,
     }));
 
     const response = await openai.responses.create({
@@ -40,7 +41,7 @@ export async function POST(request: Request) {
           role: "user",
           content: [
             {
-              type: "input_text",
+              type: "input_text" as const,
               text: `
 Tu es un assistant scolaire pour un collégien.
 
@@ -69,7 +70,7 @@ Règles :
             },
             ...imageContents,
           ],
-        },
+        } as any,
       ],
     });
 
