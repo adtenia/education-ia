@@ -33,8 +33,6 @@ export default function MobileUploadPage() {
   function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files || []);
 
-    alert("Photo sélectionnée : " + files.length);
-
     setErrorMessage("");
     setIsDone(false);
 
@@ -57,11 +55,8 @@ export default function MobileUploadPage() {
   }
 
   async function handleSendPhotos() {
-    alert("Bouton envoyer cliqué");
-
     if (selectedFiles.length === 0) {
       setErrorMessage("Choisis d'abord au moins une photo.");
-      alert("Aucune photo sélectionnée");
       return;
     }
 
@@ -70,11 +65,7 @@ export default function MobileUploadPage() {
       setErrorMessage("");
       setIsDone(false);
 
-      alert("Session utilisée : " + sessionId);
-
       const supabase = createClient();
-
-      alert("Conversion des photos en cours...");
 
       const images = await Promise.all(
         selectedFiles.map(async (file) => ({
@@ -83,8 +74,6 @@ export default function MobileUploadPage() {
           base64: await fileToBase64(file),
         }))
       );
-
-      alert("Photos converties : " + images.length);
 
       const { data, error } = await supabase
         .from("import_sessions")
@@ -96,17 +85,11 @@ export default function MobileUploadPage() {
         .select("id, status, images")
         .maybeSingle();
 
-      alert(
-        "Réponse Supabase : " +
-          JSON.stringify({
-            data,
-            error,
-          })
-      );
-
       if (error) {
         console.error(error);
-        setErrorMessage("Erreur Supabase : " + error.message);
+        setErrorMessage(
+          "Une erreur est survenue pendant l'envoi des photos. Réessaie."
+        );
         setIsSending(false);
         return;
       }
@@ -123,8 +106,9 @@ export default function MobileUploadPage() {
       setIsSending(false);
     } catch (error) {
       console.error(error);
-      alert("Erreur JavaScript : " + String(error));
-      setErrorMessage("Erreur JavaScript : " + String(error));
+      setErrorMessage(
+        "Une erreur est survenue pendant l'envoi des photos. Réessaie."
+      );
       setIsSending(false);
     }
   }

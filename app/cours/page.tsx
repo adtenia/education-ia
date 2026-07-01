@@ -23,6 +23,11 @@ export default async function CoursPage() {
     .select("subject_id, mastery_percent")
     .eq("user_id", user.id);
 
+  const { data: cours } = await supabase
+    .from("cours")
+    .select("subject_id")
+    .eq("user_id", user.id);
+
   return (
     <main className="min-h-screen bg-gradient-to-br from-white via-violet-50 to-blue-50 p-8">
       <div className="mx-auto max-w-5xl">
@@ -59,6 +64,10 @@ export default async function CoursPage() {
 
                 const mastery = subjectProgress?.mastery_percent ?? 0;
 
+                const coursCount =
+                  cours?.filter((item) => item.subject_id === subject.id)
+                    .length ?? 0;
+
                 return (
                   <Link
                     key={subject.id}
@@ -82,9 +91,12 @@ export default async function CoursPage() {
                       />
                     </div>
 
-                    <p className="mt-3 text-sm text-gray-500">
-                      Voir les chapitres →
-                    </p>
+                    <div className="mt-3 flex items-center justify-between text-sm text-gray-500">
+                      <span>
+                        {coursCount} cours importé{coursCount > 1 ? "s" : ""}
+                      </span>
+                      <span>Voir les chapitres →</span>
+                    </div>
                   </Link>
                 );
               })}
