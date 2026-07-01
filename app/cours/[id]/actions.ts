@@ -83,6 +83,21 @@ export async function createRevisionSheet(coursId: string) {
     content: result.content,
   });
 
+  if (cours.chapter_id) {
+    const { error: progressError } = await supabase.rpc(
+      "record_revision_sheet",
+      { p_chapter_id: cours.chapter_id }
+    );
+
+    if (progressError) {
+      console.error(progressError);
+    }
+  } else {
+    console.error(
+      `Cours ${coursId} sans chapter_id : progression par chapitre non mise à jour.`
+    );
+  }
+
   redirect(`/cours/${coursId}`);
 }
 

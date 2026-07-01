@@ -3,42 +3,32 @@ import { redirect } from "next/navigation";
 import ProfileAvatar from "../../components/ProfileAvatar";
 import { createClient } from "../../utils/supabase/server";
 
-const chaptersBySubject = {
-  maths: [
-    { title: "Fractions", progress: 78, status: "À reprendre" },
-    { title: "Proportionnalité", progress: 58, status: "En cours" },
-    { title: "Équations simples", progress: 32, status: "Fragile" },
-  ],
-  francais: [
-    { title: "Le passé composé", progress: 72, status: "À reprendre" },
-    { title: "Les accords du participe passé", progress: 45, status: "Fragile" },
-  ],
-  histoire: [
-    { title: "La Révolution française", progress: 64, status: "En cours" },
-    { title: "L’Empire romain", progress: 38, status: "Fragile" },
-  ],
-  svt: [
-    { title: "Le corps humain", progress: 81, status: "À reprendre" },
-    { title: "Les volcans", progress: 51, status: "En cours" },
-  ],
-  physique: [
-    { title: "L’électricité", progress: 69, status: "En cours" },
-    { title: "Les forces", progress: 40, status: "Fragile" },
-  ],
-  anglais: [
-    { title: "Le prétérit", progress: 74, status: "À reprendre" },
-    { title: "Le vocabulaire du collège", progress: 55, status: "En cours" },
-  ],
-  musique: [
-    { title: "Le rythme", progress: 62, status: "En cours" },
-    { title: "Les instruments", progress: 47, status: "Fragile" },
-  ],
-};
-
 type Subject = {
   id: string;
   name: string;
   slug: string;
+};
+
+type ChapterStatus = "a_reprendre" | "en_cours" | "maitrise";
+
+type ChapterWithProgress = {
+  id: string;
+  title: string;
+  courseCount: number;
+  masteryPercent: number | null;
+  status: ChapterStatus | null;
+};
+
+const STATUS_LABELS: Record<ChapterStatus, string> = {
+  a_reprendre: "À reprendre",
+  en_cours: "En cours",
+  maitrise: "Maîtrisé",
+};
+
+const STATUS_STYLES: Record<ChapterStatus, string> = {
+  a_reprendre: "bg-red-50 text-red-700",
+  en_cours: "bg-orange-50 text-orange-700",
+  maitrise: "bg-emerald-50 text-emerald-700",
 };
 
 export default async function DashboardPage({
@@ -68,11 +58,66 @@ export default async function DashboardPage({
   const safeSubjects: Subject[] = subjects ?? [];
 
   const params = await searchParams;
-  const selectedSubject = params?.subject ?? safeSubjects[0]?.slug ?? "maths";
+  const selectedSubject = params?.subject ?? safeSubjects[0]?.slug ?? "";
 
-  const chapters =
-    chaptersBySubject[selectedSubject as keyof typeof chaptersBySubject] ??
-    [];
+  const selectedSubjectRecord = safeSubjects.find(
+    (subject) => subject.slug === selectedSubject
+  );
+
+  let chapters: ChapterWithProgress[] = [];
+  let masteryPercent = 0;
+
+  if (selectedSubjectRecord) {
+    const { data: subjectChapters } = await supabase
+      .from("chapters")
+      .select("id, title")
+      .eq("subject_id", selectedSubjectRecord.id)
+      .order("title");
+
+    const { data: subjectCours } = await supabase
+      .from("cours")
+      .select("id, chapter_id")
+      .eq("user_id", user.id)
+      .eq("subject_id", selectedSubjectRecord.id);
+
+    const { data: progress } = await supabase
+      .from("progress")
+      .select("mastery_percent")
+      .eq("user_id", user.id)
+      .eq("subject_id", selectedSubjectRecord.id)
+      .maybeSingle();
+
+    masteryPercent = progress?.mastery_percent ?? 0;
+
+    const chapterIds = (subjectChapters ?? []).map((chapter) => chapter.id);
+
+    const { data: chapterProgressRows } =
+      chapterIds.length > 0
+        ? await supabase
+            .from("chapter_progress")
+            .select("chapter_id, mastery_percent, status")
+            .eq("user_id", user.id)
+            .in("chapter_id", chapterIds)
+        : { data: [] };
+
+    chapters = (subjectChapters ?? [])
+      .map((chapter) => {
+        const chapterProgress = chapterProgressRows?.find(
+          (row) => row.chapter_id === chapter.id
+        );
+
+        return {
+          id: chapter.id,
+          title: chapter.title,
+          courseCount:
+            subjectCours?.filter((cours) => cours.chapter_id === chapter.id)
+              .length ?? 0,
+          masteryPercent: chapterProgress?.mastery_percent ?? null,
+          status: (chapterProgress?.status as ChapterStatus | undefined) ?? null,
+        };
+      })
+      .filter((chapter) => chapter.courseCount > 0);
+  }
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#fbfaff] px-8 py-8 text-slate-950">
@@ -119,7 +164,7 @@ export default async function DashboardPage({
             <p className="text-sm font-bold text-slate-500">
               Progression globale
             </p>
-            <p className="mt-3 text-4xl font-black">0%</p>
+            <p className="mt-3 text-4xl font-black">{masteryPercent}%</p>
           </div>
         </section>
 
@@ -150,7 +195,7 @@ export default async function DashboardPage({
             <div>
               <h2 className="text-3xl font-black">Chapitres à reprendre</h2>
               <p className="mt-2 text-slate-500">
-                Les chapitres maîtrisés à 100 % ne sont pas affichés ici.
+                Chapitres pour lesquels tu as déjà importé au moins un cours.
               </p>
             </div>
 
@@ -163,34 +208,47 @@ export default async function DashboardPage({
             <div className="grid gap-6 md:grid-cols-3">
               {chapters.map((chapter) => (
                 <article
-                  key={chapter.title}
+                  key={chapter.id}
                   className="rounded-[1.75rem] border border-slate-200 bg-slate-50 p-6 transition hover:-translate-y-1 hover:border-violet-300 hover:bg-white hover:shadow-xl"
                 >
-                  <div className="mb-6 flex items-center justify-between">
+                  <div className="mb-6 flex flex-wrap items-center gap-2">
                     <span className="rounded-full bg-white px-4 py-2 text-xs font-black uppercase tracking-wide text-slate-500 shadow-sm">
-                      {chapter.status}
+                      {chapter.courseCount} cours importé
+                      {chapter.courseCount > 1 ? "s" : ""}
                     </span>
-                    <span className="font-black text-violet-700">
-                      {chapter.progress}%
-                    </span>
+
+                    {chapter.status ? (
+                      <span
+                        className={`rounded-full px-4 py-2 text-xs font-black uppercase tracking-wide ${STATUS_STYLES[chapter.status]}`}
+                      >
+                        {STATUS_LABELS[chapter.status]}
+                      </span>
+                    ) : (
+                      <span className="rounded-full bg-slate-100 px-4 py-2 text-xs font-black uppercase tracking-wide text-slate-500">
+                        Pas encore évalué
+                      </span>
+                    )}
                   </div>
 
                   <h3 className="text-xl font-black">{chapter.title}</h3>
 
                   <p className="mt-3 text-sm leading-6 text-slate-500">
-                    Continue ce chapitre pour renforcer les notions encore
-                    fragiles.
+                    {chapter.masteryPercent !== null
+                      ? `Maîtrise actuelle : ${chapter.masteryPercent}%`
+                      : "Génère une fiche ou fais un quiz pour évaluer ce chapitre."}
                   </p>
 
-                  <div className="mt-6 h-3 overflow-hidden rounded-full bg-slate-200">
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-violet-600 to-indigo-500"
-                      style={{ width: `${chapter.progress}%` }}
-                    />
-                  </div>
+                  {chapter.masteryPercent !== null && (
+                    <div className="mt-4 h-3 overflow-hidden rounded-full bg-slate-200">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-violet-600 to-indigo-500"
+                        style={{ width: `${chapter.masteryPercent}%` }}
+                      />
+                    </div>
+                  )}
 
                   <Link
-                    href="#"
+                    href={`/cours/matiere/${selectedSubjectRecord?.id}`}
                     className="mt-6 inline-block rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white transition hover:bg-violet-700"
                   >
                     Continuer
@@ -204,7 +262,8 @@ export default async function DashboardPage({
                 Aucun chapitre pour cette matière pour le moment.
               </p>
               <p className="mt-3 text-slate-500">
-                Plus tard, les chapitres viendront aussi de Supabase.
+                Importe un cours pour cette matière pour le voir apparaître
+                ici.
               </p>
             </div>
           )}

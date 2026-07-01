@@ -10,17 +10,15 @@ export async function saveQuizScore(quizId: string, score: number) {
     error: userError,
   } = await supabase.auth.getUser();
 
-  console.log("USER ERROR:", userError);
-  console.log("USER ID:", user?.id);
-  console.log("QUIZ ID:", quizId);
-  console.log("SCORE:", score);
+  if (userError) {
+    console.error(userError);
+  }
 
   if (!user) {
-    console.log("STOP: aucun utilisateur");
     return;
   }
 
-  const { data: updatedQuiz, error: updateQuizError } = await supabase
+  const { error: updateQuizError } = await supabase
     .from("quiz")
     .update({
       score,
@@ -28,8 +26,9 @@ export async function saveQuizScore(quizId: string, score: number) {
     .eq("id", quizId)
     .select();
 
-  console.log("UPDATED QUIZ:", updatedQuiz);
-  console.log("UPDATE QUIZ ERROR:", updateQuizError);
+  if (updateQuizError) {
+    console.error(updateQuizError);
+  }
 
   const { data: quiz, error: quizError } = await supabase
     .from("quiz")
@@ -37,66 +36,37 @@ export async function saveQuizScore(quizId: string, score: number) {
     .eq("id", quizId)
     .single();
 
-  console.log("QUIZ:", quiz);
-  console.log("QUIZ ERROR:", quizError);
+  if (quizError) {
+    console.error(quizError);
+  }
 
   if (!quiz?.cours_id) {
-    console.log("STOP: aucun cours_id trouvé");
     return;
   }
 
   const { data: cours, error: coursError } = await supabase
     .from("cours")
-    .select("id, subject_id")
+    .select("id, chapter_id")
     .eq("id", quiz.cours_id)
     .single();
 
-  console.log("COURS:", cours);
-  console.log("COURS ERROR:", coursError);
+  if (coursError) {
+    console.error(coursError);
+  }
 
-  if (!cours?.subject_id) {
-    console.log("STOP: aucun subject_id trouvé dans le cours");
+  if (!cours?.chapter_id) {
+    console.error(
+      `Quiz ${quizId} rattaché à un cours sans chapter_id : progression par chapitre non mise à jour.`
+    );
     return;
   }
 
-  const { data: existingProgress, error: progressSelectError } = await supabase
-    .from("progress")
-    .select("*")
-    .eq("user_id", user.id)
-    .eq("subject_id", cours.subject_id)
-    .maybeSingle();
+  const { error: progressError } = await supabase.rpc("record_quiz_attempt", {
+    p_chapter_id: cours.chapter_id,
+    p_score: score,
+  });
 
-  console.log("EXISTING PROGRESS:", existingProgress);
-  console.log("PROGRESS SELECT ERROR:", progressSelectError);
-
-  if (existingProgress) {
-    const newMastery = Math.round(
-      (existingProgress.mastery_percent + score) / 2
-    );
-
-    const { data: updatedProgress, error: updateProgressError } =
-      await supabase
-        .from("progress")
-        .update({
-          mastery_percent: newMastery,
-        })
-        .eq("id", existingProgress.id)
-        .select();
-
-    console.log("UPDATED PROGRESS:", updatedProgress);
-    console.log("UPDATE PROGRESS ERROR:", updateProgressError);
-  } else {
-    const { data: insertedProgress, error: insertProgressError } =
-      await supabase
-        .from("progress")
-        .insert({
-          user_id: user.id,
-          subject_id: cours.subject_id,
-          mastery_percent: score,
-        })
-        .select();
-
-    console.log("INSERTED PROGRESS:", insertedProgress);
-    console.log("INSERT PROGRESS ERROR:", insertProgressError);
+  if (progressError) {
+    console.error(progressError);
   }
 }
