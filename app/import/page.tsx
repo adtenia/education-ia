@@ -6,6 +6,12 @@ import { useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { createClient } from "../../utils/supabase/client";
 
+type Subject = {
+  id: string;
+  name: string;
+  slug: string;
+};
+
 type Chapter = {
   id: string;
   title: string;
@@ -31,7 +37,7 @@ type MobileImage = {
 
 const MAX_IMAGES = 5;
 
-function getSlugFromSubjectName(subjectName: string) {
+function getSlugFromSubjectName(subjectName: string): string | null {
   const name = subjectName.toLowerCase();
 
   if (name.includes("math")) return "maths";
@@ -42,7 +48,7 @@ function getSlugFromSubjectName(subjectName: string) {
   if (name.includes("svt")) return "svt";
   if (name.includes("musique")) return "musique";
 
-  return "maths";
+  return null;
 }
 
 function cleanAiJson(text: string) {
@@ -89,6 +95,18 @@ export default function ImportPage() {
   const [showQr, setShowQr] = useState(false);
   const [isCheckingMobilePhotos, setIsCheckingMobilePhotos] = useState(false);
 
+  const [needsSubjectConfirmation, setNeedsSubjectConfirmation] = useState(false);
+  const [pendingAnalysis, setPendingAnalysis] = useState<AiAnalysis | null>(null);
+  const [availableSubjects, setAvailableSubjects] = useState<Subject[]>([]);
+  const [chosenSubjectId, setChosenSubjectId] = useState("");
+
+  function resetSubjectConfirmation() {
+    setNeedsSubjectConfirmation(false);
+    setPendingAnalysis(null);
+    setAvailableSubjects([]);
+    setChosenSubjectId("");
+  }
+
   function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files || []);
 
@@ -106,6 +124,7 @@ export default function ImportPage() {
       return;
     }
 
+    resetSubjectConfirmation();
     setSelectedFiles(files);
     setImagePreviews(files.map((file) => URL.createObjectURL(file)));
     setDetectedSubjectName("En attente de l'analyse IA");
@@ -180,11 +199,82 @@ export default function ImportPage() {
       )
     );
 
+    resetSubjectConfirmation();
     setSelectedFiles(files);
     setImagePreviews(mobileImages.map((image) => image.base64));
     setDetectedSubjectName("En attente de l'analyse IA");
     setDetectedChapterName("En attente de l'analyse IA");
     setIsCheckingMobilePhotos(false);
+  }
+
+  async function saveCours(subject: Subject, aiAnalysis: AiAnalysis) {
+    setIsLoading(true);
+
+    const supabase = createClient();
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+
+    let chapter: Chapter | null = null;
+
+    const { data: existingChapter } = await supabase
+      .from("chapters")
+      .select("id, title, subject_id")
+      .eq("subject_id", subject.id)
+      .eq("title", aiAnalysis.chapter)
+      .maybeSingle();
+
+    if (existingChapter) {
+      chapter = existingChapter;
+    } else {
+      const { data: createdChapter, error: chapterError } = await supabase
+        .from("chapters")
+        .insert({
+          title: aiAnalysis.chapter,
+          subject_id: subject.id,
+        })
+        .select("id, title, subject_id")
+        .single();
+
+      if (chapterError) {
+        console.error(chapterError);
+      }
+
+      chapter = createdChapter;
+    }
+
+    const mainFileName = selectedFiles.map((file) => file.name).join(", ");
+
+    const { data: newCours, error } = await supabase
+      .from("cours")
+      .insert({
+        user_id: user.id,
+        title: aiAnalysis.chapter || selectedFiles[0].name,
+        file_name: mainFileName,
+        subject_id: subject.id,
+        chapter_id: chapter?.id ?? null,
+        detected_subject: subject.name,
+        detected_chapter: chapter?.title ?? aiAnalysis.chapter,
+        summary: aiAnalysis.summary,
+        analysis_status: "done",
+      })
+      .select()
+      .single();
+
+    if (error || !newCours) {
+      console.error(error);
+      alert("Erreur pendant l'import du cours.");
+      setIsLoading(false);
+      return;
+    }
+
+    router.push(`/cours/${newCours.id}`);
   }
 
   async function handleAnalyzeCourse() {
@@ -251,68 +341,51 @@ export default function ImportPage() {
 
     const subjectSlug = getSlugFromSubjectName(aiAnalysis.subject);
 
-    const { data: subject } = await supabase
-      .from("subjects")
-      .select("id, name, slug")
-      .eq("slug", subjectSlug)
-      .single();
+    const subjectResult = subjectSlug
+      ? await supabase
+          .from("subjects")
+          .select("id, name, slug")
+          .eq("slug", subjectSlug)
+          .single()
+      : { data: null };
 
-    let chapter: Chapter | null = null;
+    const subject = subjectResult.data as Subject | null;
 
-    if (subject) {
-      const { data: existingChapter } = await supabase
-        .from("chapters")
-        .select("id, title, subject_id")
-        .eq("subject_id", subject.id)
-        .eq("title", aiAnalysis.chapter)
-        .maybeSingle();
+    if (!subject) {
+      const { data: subjects } = await supabase
+        .from("subjects")
+        .select("id, name, slug")
+        .order("name", { ascending: true });
 
-      if (existingChapter) {
-        chapter = existingChapter;
-      } else {
-        const { data: createdChapter, error: chapterError } = await supabase
-          .from("chapters")
-          .insert({
-            title: aiAnalysis.chapter,
-            subject_id: subject.id,
-          })
-          .select("id, title, subject_id")
-          .single();
-
-        if (chapterError) {
-          console.error(chapterError);
-        }
-
-        chapter = createdChapter;
-      }
-    }
-
-    const mainFileName = selectedFiles.map((file) => file.name).join(", ");
-
-    const { data: newCours, error } = await supabase
-      .from("cours")
-      .insert({
-        user_id: user.id,
-        title: aiAnalysis.chapter || selectedFiles[0].name,
-        file_name: mainFileName,
-        subject_id: subject?.id ?? null,
-        chapter_id: chapter?.id ?? null,
-        detected_subject: subject?.name ?? aiAnalysis.subject,
-        detected_chapter: chapter?.title ?? aiAnalysis.chapter,
-        summary: aiAnalysis.summary,
-        analysis_status: "done",
-      })
-      .select()
-      .single();
-
-    if (error || !newCours) {
-      console.error(error);
-      alert("Erreur pendant l'import du cours.");
+      setAvailableSubjects(subjects ?? []);
+      setPendingAnalysis(aiAnalysis);
+      setNeedsSubjectConfirmation(true);
       setIsLoading(false);
       return;
     }
 
-    router.push(`/cours/${newCours.id}`);
+    await saveCours(subject, aiAnalysis);
+  }
+
+  async function handleConfirmSubject() {
+    if (!chosenSubjectId || !pendingAnalysis) {
+      alert("Choisis une matière avant de continuer.");
+      return;
+    }
+
+    const chosenSubject = availableSubjects.find(
+      (subject) => subject.id === chosenSubjectId
+    );
+
+    if (!chosenSubject) {
+      alert("Matière introuvable, réessaie.");
+      return;
+    }
+
+    const aiAnalysis = pendingAnalysis;
+    resetSubjectConfirmation();
+
+    await saveCours(chosenSubject, aiAnalysis);
   }
 
   const mobileUploadUrl =
@@ -414,15 +487,52 @@ export default function ImportPage() {
                   ))}
                 </div>
 
-                <button
-                  onClick={handleAnalyzeCourse}
-                  disabled={isLoading}
-                  className="mt-8 rounded-2xl bg-slate-900 px-8 py-4 font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
-                >
-                  {isLoading
-                    ? "Analyse des photos en cours..."
-                    : "Analyser les photos avec l'IA"}
-                </button>
+                {needsSubjectConfirmation ? (
+                  <div className="mt-8 rounded-3xl bg-orange-50 p-6 text-left shadow">
+                    <p className="font-semibold text-orange-800">
+                      Nous n'avons pas pu identifier la matière avec certitude.
+                    </p>
+
+                    <p className="mt-2 text-sm text-orange-700">
+                      L'IA propose « {detectedSubjectName} ». Choisis la bonne
+                      matière avant d'enregistrer ce cours, pour être sûr qu'il
+                      ne soit pas classé au mauvais endroit.
+                    </p>
+
+                    <select
+                      value={chosenSubjectId}
+                      onChange={(event) => setChosenSubjectId(event.target.value)}
+                      className="mt-4 w-full rounded-2xl border border-orange-200 bg-white px-4 py-3 font-semibold text-slate-700"
+                    >
+                      <option value="">Choisis une matière</option>
+                      {availableSubjects.map((subject) => (
+                        <option key={subject.id} value={subject.id}>
+                          {subject.name}
+                        </option>
+                      ))}
+                    </select>
+
+                    <button
+                      onClick={handleConfirmSubject}
+                      disabled={!chosenSubjectId || isLoading}
+                      className="mt-4 w-full rounded-2xl bg-slate-900 px-8 py-4 font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+                    >
+                      {isLoading
+                        ? "Enregistrement en cours..."
+                        : "Confirmer et enregistrer le cours"}
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleAnalyzeCourse}
+                    disabled={isLoading}
+                    className="mt-8 rounded-2xl bg-slate-900 px-8 py-4 font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+                  >
+                    {isLoading
+                      ? "Analyse des photos en cours..."
+                      : "Analyser les photos avec l'IA"}
+                  </button>
+                )}
               </div>
             )}
           </div>
