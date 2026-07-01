@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { NextResponse } from "next/server";
+import { createClient } from "../../../utils/supabase/server";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -7,6 +8,19 @@ const openai = new OpenAI({
 
 export async function POST(request: Request) {
   try {
+    const supabase = await createClient();
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: "Non autorisé. Merci de te connecter." },
+        { status: 401 }
+      );
+    }
+
     const { summary, chapter } = await request.json();
 
     const response = await openai.responses.create({
