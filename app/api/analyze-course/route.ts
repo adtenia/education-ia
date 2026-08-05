@@ -17,7 +17,11 @@ const courseResponseSchema = {
   properties: {
     subject: { type: "string" },
     chapter: { type: "string" },
-    summary: { type: "string" },
+    summary: {
+      type: "string",
+      minLength: 600,
+      maxLength: 1400,
+    },
     course: {
       type: "object",
       additionalProperties: false,
@@ -138,7 +142,7 @@ Règles impératives :
 - Ne complète jamais le cours avec des connaissances supposées qui ne sont pas étayées par les images.
 - Signale explicitement dans le passage concerné toute information illisible, incomplète ou ambiguë.
 - Si le contenu visible est insuffisant pour respecter une exigence de longueur ou de structure, reste fidèle aux images et n'invente pas pour remplir.
-- Le champ summary est uniquement un résumé court de compatibilité.
+- Le champ summary est un résumé développé de compatibilité, compris entre 120 et 200 mots. Il synthétise les notions essentielles sans remplacer le cours complet.
 - Le contenu complet et développé doit être placé dans course.`,
         },
         {

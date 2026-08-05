@@ -29,11 +29,12 @@ export default async function CoursPage() {
     .eq("user_id", user.id);
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-white via-violet-50 to-blue-50 p-8">
+    <main className="min-h-screen bg-slate-50 px-4 py-8 sm:px-6 sm:py-12">
       <div className="mx-auto max-w-5xl">
-        <div className="mb-8 rounded-3xl bg-white p-8 shadow-sm">
-          <h1 className="text-4xl font-bold text-gray-900">
-            📚 Mes cours
+        <div className="mb-8 rounded-3xl border border-violet-100 bg-gradient-to-br from-white to-violet-50 p-6 shadow-sm sm:p-9">
+          <p className="text-sm font-bold uppercase tracking-widest text-violet-700">Bibliothèque</p>
+          <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950 sm:text-5xl">
+            Mes cours
           </h1>
 
           <p className="mt-3 text-gray-600">
@@ -43,14 +44,14 @@ export default async function CoursPage() {
           <div className="mt-6">
             <Link
               href="/import"
-              className="rounded-2xl bg-violet-600 px-5 py-3 font-semibold text-white transition hover:bg-violet-700"
+              className="inline-flex rounded-xl bg-violet-600 px-5 py-3 font-bold text-white shadow-lg shadow-violet-200 transition hover:-translate-y-0.5 hover:bg-violet-700"
             >
               + Importer un cours
             </Link>
           </div>
         </div>
 
-        <div className="rounded-3xl bg-white p-8 shadow-sm">
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
           <h2 className="mb-6 text-2xl font-bold text-gray-900">
             Progression par matière
           </h2>
@@ -72,7 +73,7 @@ export default async function CoursPage() {
                   <Link
                     key={subject.id}
                     href={`/cours/matiere/${subject.id}`}
-                    className="rounded-2xl border border-gray-200 bg-white p-5 transition hover:border-violet-300 hover:bg-violet-50"
+                    className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-violet-300 hover:bg-violet-50 hover:shadow-lg"
                   >
                     <div className="flex items-center justify-between">
                       <h3 className="text-lg font-bold text-gray-900">

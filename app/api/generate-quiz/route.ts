@@ -6,6 +6,41 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+const quizSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    questions: {
+      type: "array",
+      minItems: 8,
+      maxItems: 8,
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          question: { type: "string" },
+          answer_a: { type: "string" },
+          answer_b: { type: "string" },
+          answer_c: { type: "string" },
+          answer_d: { type: "string" },
+          correct_answer: { type: "string", enum: ["A", "B", "C", "D"] },
+          explanation: { type: "string" },
+        },
+        required: [
+          "question",
+          "answer_a",
+          "answer_b",
+          "answer_c",
+          "answer_d",
+          "correct_answer",
+          "explanation",
+        ],
+      },
+    },
+  },
+  required: ["questions"],
+} as const;
+
 export async function POST(request: Request) {
   try {
     const supabase = await createClient();
@@ -21,38 +56,45 @@ export async function POST(request: Request) {
       );
     }
 
-    const { summary, chapter } = await request.json();
+    const { summary, chapter, course } = await request.json();
+    const source = course
+      ? `Cours structuré :\n${JSON.stringify(course, null, 2)}`
+      : `Résumé disponible :\n${summary || "Aucun contenu détaillé disponible."}`;
 
     const response = await openai.responses.create({
       model: "gpt-4.1-mini",
-      input: `
-Tu es un professeur.
+      max_output_tokens: 5000,
+      text: {
+        format: {
+          type: "json_schema",
+          name: "course_quiz",
+          strict: true,
+          schema: quizSchema,
+        },
+      },
+      input: [
+        {
+          role: "system",
+          content: `Tu es un professeur qui crée des quiz de révision fiables pour collégiens et lycéens.
 
-À partir du chapitre et du résumé ci-dessous, crée exactement 5 questions de quiz.
+Règles impératives :
+- Crée exactement 8 questions variées couvrant les notions principales de la source.
+- Chaque question possède quatre réponses plausibles et une seule bonne réponse.
+- Répartis les bonnes réponses entre A, B, C et D.
+- Ajoute pour chaque question une explication pédagogique concise qui justifie la bonne réponse.
+- N'invente aucune connaissance qui ne soit pas présente ou raisonnablement déductible de la source.
+- N'utilise aucun emoji.
+- Écris dans un français naturel, précis et adapté au niveau du cours.`,
+        },
+        {
+          role: "user",
+          content: `Crée le quiz pour le chapitre suivant :
 
-Chapitre :
-${chapter}
+${chapter || "Chapitre non renseigné"}
 
-Résumé :
-${summary}
-
-Réponds UNIQUEMENT en JSON.
-
-Format :
-
-[
-  {
-    "question": "...",
-    "answer_a": "...",
-    "answer_b": "...",
-    "answer_c": "...",
-    "answer_d": "...",
-    "correct_answer": "A"
-  }
-]
-
-correct_answer doit être A, B, C ou D.
-`,
+${source}`,
+        },
+      ],
     });
 
     return NextResponse.json({

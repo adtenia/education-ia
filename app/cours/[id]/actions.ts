@@ -11,6 +11,7 @@ type QuizQuestion = {
   answer_c: string;
   answer_d: string;
   correct_answer: "A" | "B" | "C" | "D";
+  explanation?: string;
 };
 
 function cleanAiJson(text: string) {
@@ -73,6 +74,7 @@ export async function createRevisionSheet(coursId: string) {
       },
       body: JSON.stringify({
         summary: cours.summary || "",
+        course: cours.course_content || null,
         chapter: cours.detected_chapter || cours.title || "Chapitre",
       }),
     }
@@ -140,6 +142,7 @@ export async function createQuiz(coursId: string) {
       },
       body: JSON.stringify({
         summary: cours.summary || "",
+        course: cours.course_content || null,
         chapter: cours.detected_chapter || cours.title || "Chapitre",
       }),
     }
@@ -155,8 +158,13 @@ export async function createQuiz(coursId: string) {
   let questions: QuizQuestion[] = [];
 
   try {
-    questions = JSON.parse(cleanAiJson(result.content));
-  } catch (error) {
+    const parsed = JSON.parse(cleanAiJson(result.content));
+    questions = Array.isArray(parsed) ? parsed : parsed.questions;
+
+    if (!Array.isArray(questions)) {
+      throw new Error("Liste de questions absente");
+    }
+  } catch {
     console.error("JSON quiz invalide :", result.content);
     redirect(`/cours/${coursId}`);
   }
@@ -185,9 +193,28 @@ export async function createQuiz(coursId: string) {
     answer_c: question.answer_c,
     answer_d: question.answer_d,
     correct_answer: question.correct_answer,
+    explanation: question.explanation || null,
   }));
 
-  await supabase.from("quiz_questions").insert(questionsToInsert);
+  const { error: questionsError } = await supabase
+    .from("quiz_questions")
+    .insert(questionsToInsert);
+
+  if (questionsError?.message.includes("explanation")) {
+    await supabase.from("quiz_questions").insert(
+      questionsToInsert.map((question) => ({
+        quiz_id: question.quiz_id,
+        question: question.question,
+        answer_a: question.answer_a,
+        answer_b: question.answer_b,
+        answer_c: question.answer_c,
+        answer_d: question.answer_d,
+        correct_answer: question.correct_answer,
+      }))
+    );
+  } else if (questionsError) {
+    console.error(questionsError);
+  }
 
   redirect(`/cours/${coursId}`);
 }

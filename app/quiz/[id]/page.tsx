@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import PrintButton from "../../../components/PrintButton";
 import { createClient } from "../../../utils/supabase/server";
 import QuizForm from "./QuizForm";
 
@@ -41,6 +42,7 @@ export default async function QuizDetailPage({ params }: PageProps) {
           </Link>
         </div>
 
+        <div id="print-quiz" className="print-document print-quiz">
         <header className="rounded-3xl bg-gradient-to-br from-emerald-50 to-white p-6 shadow-sm ring-1 ring-slate-200 sm:p-10">
           <p className="text-sm font-bold uppercase tracking-widest text-emerald-700">Quiz</p>
           <h1 className="mt-3 text-3xl font-bold tracking-tight text-slate-950 sm:text-5xl">
@@ -49,6 +51,7 @@ export default async function QuizDetailPage({ params }: PageProps) {
           <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600 sm:text-lg">
             Réponds à chaque question, puis valide le quiz pour découvrir ton score et la correction détaillée.
           </p>
+          <PrintButton targetId="print-quiz" label="Imprimer le quiz" className="mt-6" />
         </header>
 
         <section className="mt-8">
@@ -60,6 +63,7 @@ export default async function QuizDetailPage({ params }: PageProps) {
             </div>
           )}
         </section>
+        </div>
       </div>
     </main>
   );

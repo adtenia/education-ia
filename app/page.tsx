@@ -40,13 +40,13 @@ export default function Home() {
         <section className="relative">
           <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_78%_18%,rgba(124,58,237,0.22),transparent_32%),radial-gradient(circle_at_22%_28%,rgba(59,130,246,0.10),transparent_28%),linear-gradient(180deg,#ffffff,#faf7ff)]" />
 
-          <div className="mx-auto grid min-h-[760px] max-w-7xl items-center gap-20 px-8 py-24 lg:grid-cols-2">
+          <div className="mx-auto grid min-h-[720px] max-w-7xl items-center gap-14 px-4 py-16 sm:px-8 sm:py-24 lg:grid-cols-2 lg:gap-20">
             <div>
               <div className="mb-8 inline-flex rounded-full border border-violet-200 bg-white/80 px-5 py-3 text-sm font-bold text-violet-700 shadow-sm">
                 Révise mieux. Progresse plus vite.
               </div>
 
-              <h1 className="max-w-2xl text-6xl font-black leading-tight tracking-tight md:text-7xl">
+              <h1 className="max-w-2xl text-4xl font-black leading-tight tracking-tight sm:text-6xl md:text-7xl">
                 Ton assistant de révision{" "}
                 <span className="bg-gradient-to-r from-violet-700 via-purple-600 to-indigo-500 bg-clip-text text-transparent">
                   boosté à l’IA
@@ -113,10 +113,10 @@ export default function Home() {
                   <h3 className="font-black text-slate-900">Points clés</h3>
 
                   <ul className="mt-4 space-y-3 text-slate-600">
-                    <li>• Causes profondes de la Révolution</li>
-                    <li>• Les États généraux</li>
-                    <li>• La prise de la Bastille</li>
-                    <li>• La Déclaration des droits de l’homme</li>
+                    <li>Causes profondes de la Révolution</li>
+                    <li>Les États généraux</li>
+                    <li>La prise de la Bastille</li>
+                    <li>La Déclaration des droits de l’homme</li>
                   </ul>
                 </div>
 
@@ -229,10 +229,10 @@ export default function Home() {
                 </div>
 
                 <ul className="mt-8 space-y-4 text-slate-600">
-                  <li>✓ Import de cours</li>
-                  <li>✓ Fiches de révision</li>
-                  <li>✓ Quiz d’entraînement</li>
-                  <li>✓ Suivi de progression</li>
+                  <li>Import de cours</li>
+                  <li>Fiches de révision</li>
+                  <li>Quiz d’entraînement</li>
+                  <li>Suivi de progression</li>
                 </ul>
 
                 <Link
@@ -264,10 +264,10 @@ export default function Home() {
                 </div>
 
                 <ul className="mt-8 space-y-4 text-slate-600">
-                  <li>✓ Tout Standard</li>
-                  <li>✓ Plus de générations IA</li>
-                  <li>✓ Exercices ciblés avancés</li>
-                  <li>✓ Cahier de révision personnalisé</li>
+                  <li>Tout Standard</li>
+                  <li>Plus de générations IA</li>
+                  <li>Exercices ciblés avancés</li>
+                  <li>Cahier de révision personnalisé</li>
                 </ul>
 
                 <Link

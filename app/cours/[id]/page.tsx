@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import PrintButton from "../../../components/PrintButton";
 import { createClient } from "../../../utils/supabase/server";
 import RevisionSheetContent, {
   cleanRevisionTitle,
@@ -31,23 +32,68 @@ type StructuredCourse = {
   conclusion: string;
 };
 
-function getStructuredCourse(result: unknown): StructuredCourse | null {
-  if (!result) return null;
+function asStringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
+}
+
+function normalizeStructuredCourse(value: unknown): StructuredCourse | null {
+  if (!value || typeof value !== "object" || !("sections" in value)) {
+    return null;
+  }
+
+  const source = value as Record<string, unknown>;
+  const rawSections = Array.isArray(source.sections) ? source.sections : [];
+  const sections = rawSections
+    .filter((section): section is Record<string, unknown> => Boolean(section) && typeof section === "object")
+    .map((section) => ({
+      title: typeof section.title === "string" ? section.title : "Section",
+      paragraphs: asStringArray(section.paragraphs),
+      key_points: asStringArray(section.key_points),
+      definitions: Array.isArray(section.definitions)
+        ? section.definitions
+            .filter((definition): definition is Record<string, unknown> => Boolean(definition) && typeof definition === "object")
+            .map((definition) => ({
+              term: typeof definition.term === "string" ? definition.term : "Notion",
+              definition: typeof definition.definition === "string" ? definition.definition : "",
+            }))
+            .filter((definition) => definition.definition)
+        : [],
+      examples: asStringArray(section.examples),
+    }));
+
+  if (sections.length === 0) return null;
+
+  return {
+    title: typeof source.title === "string" ? source.title : "Cours",
+    introduction: typeof source.introduction === "string" ? source.introduction : "",
+    sections,
+    important_points: asStringArray(source.important_points),
+    conclusion: typeof source.conclusion === "string" ? source.conclusion : "",
+  };
+}
+
+function getStructuredCourse(
+  courseContent: unknown,
+  legacyResult: unknown
+): StructuredCourse | null {
+  const source = courseContent || legacyResult;
+
+  if (!source) return null;
 
   try {
-    const parsed = typeof result === "string" ? JSON.parse(result) : result;
+    const parsed = typeof source === "string" ? JSON.parse(source) : source;
+
+    if (courseContent) {
+      return normalizeStructuredCourse(parsed);
+    }
 
     if (!parsed || typeof parsed !== "object" || !("course" in parsed)) {
       return null;
     }
 
-    const course = parsed.course as Partial<StructuredCourse> | null;
-
-    if (!course || typeof course !== "object" || !Array.isArray(course.sections)) {
-      return null;
-    }
-
-    return course as StructuredCourse;
+    return normalizeStructuredCourse(parsed.course);
   } catch {
     return null;
   }
@@ -86,7 +132,10 @@ export default async function CoursDetailPage({ params }: PageProps) {
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });
 
-  const structuredCourse = getStructuredCourse(cours.result);
+  const structuredCourse = getStructuredCourse(
+    cours.course_content,
+    cours.result
+  );
   const deleteCoursWithId = deleteCours.bind(null, id);
   const createQuizWithId = createQuiz.bind(null, id);
   const createRevisionSheetWithId = createRevisionSheet.bind(null, id);
@@ -94,7 +143,7 @@ export default async function CoursDetailPage({ params }: PageProps) {
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-8 sm:px-6 sm:py-12">
       <div className="mx-auto max-w-5xl">
-        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="no-print mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <Link href="/cours" className="text-sm font-semibold text-slate-600 hover:text-slate-950">
             ← Retour aux cours
           </Link>
@@ -105,7 +154,7 @@ export default async function CoursDetailPage({ params }: PageProps) {
           </form>
         </div>
 
-        <article className="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
+        <article id="print-course" className="print-document print-course overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
           <header className="border-b border-slate-200 bg-gradient-to-br from-blue-50 to-white px-6 py-8 sm:px-10 sm:py-12">
             <p className="mb-3 text-sm font-bold uppercase tracking-widest text-blue-700">Cours</p>
             <h1 className="max-w-4xl text-3xl font-bold tracking-tight text-slate-950 sm:text-5xl">
@@ -119,6 +168,15 @@ export default async function CoursDetailPage({ params }: PageProps) {
                 Chapitre : {cours.detected_chapter || "Non détecté"}
               </span>
             </div>
+            <div className="print-hide mt-7 flex flex-col gap-3 sm:flex-row">
+            <Link
+              href={`/cours/${id}/carte-mentale`}
+              className="inline-flex items-center justify-center rounded-xl bg-violet-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-violet-200 transition hover:-translate-y-0.5 hover:bg-violet-700"
+            >
+              Générer une carte mentale
+            </Link>
+              <PrintButton targetId="print-course" strategy="in-place" />
+            </div>
           </header>
 
           {structuredCourse ? (
@@ -129,7 +187,7 @@ export default async function CoursDetailPage({ params }: PageProps) {
 
               <div className="mt-10 space-y-10">
                 {structuredCourse.sections.map((section, sectionIndex) => (
-                  <section key={`${section.title}-${sectionIndex}`} className="border-t border-slate-200 pt-9">
+                  <section key={`${section.title}-${sectionIndex}`} className="print-course-section border-t border-slate-200 pt-9">
                     <div className="mb-6 flex items-start gap-4">
                       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white">
                         {sectionIndex + 1}
@@ -146,12 +204,12 @@ export default async function CoursDetailPage({ params }: PageProps) {
                     </div>
 
                     {section.key_points.length > 0 && (
-                      <div className="mt-7 rounded-2xl bg-blue-50 p-5 sm:p-6">
-                        <h3 className="font-bold text-blue-950">Points à retenir</h3>
+                      <div className="print-keep mt-7 rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm sm:p-6">
+                        <h3 className="font-bold text-amber-950">Points importants</h3>
                         <ul className="mt-3 space-y-2">
                           {section.key_points.map((point, pointIndex) => (
-                            <li key={pointIndex} className="flex gap-3 leading-7 text-blue-950">
-                              <span aria-hidden="true" className="mt-3 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-600" />
+                            <li key={pointIndex} className="flex gap-3 leading-7 text-amber-950">
+                              <span aria-hidden="true" className="mt-3 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
                               <span>{point}</span>
                             </li>
                           ))}
@@ -162,10 +220,10 @@ export default async function CoursDetailPage({ params }: PageProps) {
                     {section.definitions.length > 0 && (
                       <div className="mt-7 grid gap-4 sm:grid-cols-2">
                         {section.definitions.map((item, definitionIndex) => (
-                          <aside key={`${item.term}-${definitionIndex}`} className="rounded-2xl border border-purple-200 bg-purple-50 p-5">
-                            <p className="text-sm font-bold uppercase tracking-wide text-purple-700">Définition</p>
-                            <h3 className="mt-2 text-lg font-bold text-purple-950">{item.term}</h3>
-                            <p className="mt-2 leading-7 text-purple-950">{item.definition}</p>
+                          <aside key={`${item.term}-${definitionIndex}`} className="rounded-2xl border border-red-100 bg-red-50/70 p-5 shadow-sm">
+                            <p className="text-sm font-bold uppercase tracking-wide text-red-700">Définition</p>
+                            <h3 className="mt-2 text-lg font-bold text-red-950">{item.term}</h3>
+                            <p className="mt-2 leading-7 text-red-950">{item.definition}</p>
                           </aside>
                         ))}
                       </div>
@@ -174,8 +232,8 @@ export default async function CoursDetailPage({ params }: PageProps) {
                     {section.examples.length > 0 && (
                       <div className="mt-7 space-y-3">
                         {section.examples.map((example, exampleIndex) => (
-                          <aside key={exampleIndex} className="rounded-2xl border-l-4 border-amber-400 bg-amber-50 p-5 text-amber-950">
-                            <p className="text-sm font-bold uppercase tracking-wide text-amber-800">Exemple</p>
+                          <aside key={exampleIndex} className="rounded-2xl border border-blue-200 border-l-4 border-l-blue-500 bg-blue-50 p-5 text-blue-950 shadow-sm">
+                            <p className="text-sm font-bold uppercase tracking-wide text-blue-800">Exemple</p>
                             <p className="mt-2 leading-7">{example}</p>
                           </aside>
                         ))}
@@ -186,12 +244,12 @@ export default async function CoursDetailPage({ params }: PageProps) {
               </div>
 
               {structuredCourse.important_points.length > 0 && (
-                <section className="mt-12 rounded-3xl bg-slate-950 p-6 text-white sm:p-8">
+                <section className="print-keep mt-12 rounded-3xl border border-amber-200 bg-amber-50 p-6 text-amber-950 shadow-sm sm:p-8">
                   <h2 className="text-2xl font-bold">L’essentiel du cours</h2>
                   <ul className="mt-5 space-y-3">
                     {structuredCourse.important_points.map((point, pointIndex) => (
-                      <li key={pointIndex} className="flex gap-3 leading-7 text-slate-200">
-                        <span aria-hidden="true" className="mt-3 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-400" />
+                      <li key={pointIndex} className="flex gap-3 leading-7 text-amber-950">
+                        <span aria-hidden="true" className="mt-3 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
                         <span>{point}</span>
                       </li>
                     ))}
@@ -199,7 +257,7 @@ export default async function CoursDetailPage({ params }: PageProps) {
                 </section>
               )}
 
-              <section className="mt-10 border-t border-slate-200 pt-9">
+              <section className="print-course-conclusion mt-10 border-t border-slate-200 pt-9">
                 <h2 className="text-2xl font-bold text-slate-950">Conclusion</h2>
                 <p className="mt-4 text-base leading-8 text-slate-700 sm:text-lg">
                   {structuredCourse.conclusion}
@@ -216,8 +274,8 @@ export default async function CoursDetailPage({ params }: PageProps) {
           )}
         </article>
 
-        <section className="mt-8 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:p-8">
-          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <section className="revision-section mt-8 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:p-8">
+          <div className="no-print mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-bold uppercase tracking-wider text-purple-700">Révision</p>
               <h2 className="mt-1 text-2xl font-bold text-slate-950 sm:text-3xl">Fiches de révision</h2>
@@ -230,12 +288,15 @@ export default async function CoursDetailPage({ params }: PageProps) {
           </div>
 
           {revisionSheets && revisionSheets.length > 0 ? (
-            <div className="space-y-6">
+            <div className="revision-list space-y-6">
               {revisionSheets.map((sheet) => (
-                <article key={sheet.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-5 sm:p-8">
-                  <h3 className="mb-6 text-2xl font-bold text-slate-950">
+                <article id={`print-sheet-${sheet.id}`} key={sheet.id} className="print-document print-revision rounded-2xl border border-slate-200 bg-slate-50 p-5 sm:p-8">
+                  <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <h3 className="text-2xl font-bold text-slate-950">
                     {cleanRevisionTitle(sheet.title || "Fiche de révision")}
                   </h3>
+                    <PrintButton targetId={`print-sheet-${sheet.id}`} strategy="in-place" />
+                  </header>
                   <RevisionSheetContent content={sheet.content || "Aucun contenu."} />
                 </article>
               ))}
@@ -245,7 +306,7 @@ export default async function CoursDetailPage({ params }: PageProps) {
           )}
         </section>
 
-        <section className="mt-8 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:p-8">
+        <section className="course-quiz-section mt-8 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:p-8">
           <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-bold uppercase tracking-wider text-emerald-700">Quiz</p>

@@ -48,7 +48,8 @@ export default function QuizForm({ quizId, questions }: QuizFormProps) {
 
   return (
     <>
-      <form action={handleSubmit} className="space-y-7">
+      <form action={handleSubmit}>
+        <div className="quiz-question-list space-y-7">
         {questions.map((question, index) => {
           const answers: Array<[AnswerLetter, string]> = [
             ["A", question.answer_a],
@@ -61,7 +62,7 @@ export default function QuizForm({ quizId, questions }: QuizFormProps) {
           const answeredCorrectly = selectedAnswer === question.correct_answer;
 
           return (
-            <article key={question.id} className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-8">
+            <article key={question.id} className="quiz-print-question rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-8">
               <div className="mb-6 flex items-center gap-3">
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-950 text-sm font-bold text-white">
                   {index + 1}
@@ -91,7 +92,7 @@ export default function QuizForm({ quizId, questions }: QuizFormProps) {
                         : "border-slate-200 bg-white text-slate-800 hover:border-blue-300 hover:bg-blue-50/50";
 
                   return (
-                    <label key={letter} className={`flex min-h-16 cursor-pointer items-center gap-4 rounded-2xl border p-4 text-base leading-6 transition sm:p-5 sm:text-lg ${stateClasses}`}>
+                    <label key={letter} className={`flex min-h-16 cursor-pointer items-center gap-4 rounded-2xl border p-4 text-base leading-6 transition duration-200 active:scale-[0.99] sm:p-5 sm:text-lg ${stateClasses} ${isSubmitted ? "cursor-default" : "hover:-translate-y-0.5 hover:shadow-sm"}`}>
                       <input
                         type="radio"
                         name={`question-${question.id}`}
@@ -112,7 +113,7 @@ export default function QuizForm({ quizId, questions }: QuizFormProps) {
               </fieldset>
 
               {isSubmitted && (
-                <div className={`mt-6 rounded-2xl border p-5 ${answeredCorrectly ? "border-emerald-200 bg-emerald-50 text-emerald-950" : "border-red-200 bg-red-50 text-red-950"}`}>
+                <div className={`quiz-live-feedback print-hide mt-6 rounded-2xl border p-5 ${answeredCorrectly ? "border-emerald-200 bg-emerald-50 text-emerald-950" : "border-red-200 bg-red-50 text-red-950"}`}>
                   <p className="font-bold">
                     {answeredCorrectly
                       ? "Bonne réponse."
@@ -129,22 +130,54 @@ export default function QuizForm({ quizId, questions }: QuizFormProps) {
             </article>
           );
         })}
+        </div>
 
         {score === null && (
-          <button type="submit" className="w-full rounded-2xl bg-slate-950 px-6 py-4 text-base font-bold text-white shadow-sm transition hover:bg-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 sm:w-auto sm:min-w-56">
+          <button type="submit" className="print-hide mt-7 w-full rounded-2xl bg-slate-950 px-6 py-4 text-base font-bold text-white shadow-sm transition hover:bg-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 sm:w-auto sm:min-w-56">
             Valider le quiz
           </button>
         )}
       </form>
 
       {score !== null && (
-        <section className="mt-8 rounded-3xl border border-emerald-200 bg-emerald-50 p-6 text-emerald-950 sm:p-8" aria-live="polite">
+        <section className="print-hide mt-8 rounded-3xl border border-emerald-200 bg-emerald-50 p-6 text-emerald-950 sm:p-8" aria-live="polite">
           <p className="text-2xl font-bold sm:text-3xl">Résultat : {score} / {questions.length}</p>
           <p className="mt-2 text-lg font-semibold">
             {Math.round((score / questions.length) * 100)} % de bonnes réponses
           </p>
         </section>
       )}
+
+      <section className="quiz-answer-key print-only">
+        <h2 className="font-bold text-slate-950">Corrigé du quiz</h2>
+        <div className="quiz-answer-grid">
+          {questions.map((question, index) => {
+            const answers: Record<AnswerLetter, string> = {
+              A: question.answer_a,
+              B: question.answer_b,
+              C: question.answer_c,
+              D: question.answer_d,
+            };
+            const answerLetter = question.correct_answer.toUpperCase() as AnswerLetter;
+
+            return (
+              <article key={`correction-${question.id}`} className="quiz-correction-item border border-slate-200 bg-white">
+                <h3 className="font-bold text-slate-950">
+                  Question {index + 1} — {question.question}
+                </h3>
+                <p className="font-semibold text-emerald-800">
+                  Bonne réponse : {answerLetter} — {answers[answerLetter] || "Réponse non renseignée"}
+                </p>
+                {question.explanation && (
+                  <p className="text-slate-700">
+                    <strong>Explication :</strong> {question.explanation}
+                  </p>
+                )}
+              </article>
+            );
+          })}
+        </div>
+      </section>
     </>
   );
 }

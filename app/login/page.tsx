@@ -87,7 +87,7 @@ export default function LoginPage() {
 
         <div className="mt-8 border-t border-slate-200 pt-6 text-center">
           <p className="text-slate-600">
-            Tu n'as pas encore de compte ?
+            Tu n’as pas encore de compte ?
           </p>
 
           <Link

@@ -55,7 +55,7 @@ export default async function MatierePage({ params }: PageProps) {
     ) || [];
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-white via-violet-50 to-blue-50 p-8">
+    <main className="min-h-screen bg-slate-50 px-4 py-8 sm:px-6 sm:py-12">
       <div className="mx-auto max-w-5xl">
         <Link
           href="/cours"
@@ -64,11 +64,11 @@ export default async function MatierePage({ params }: PageProps) {
           ← Retour aux matières
         </Link>
 
-        <div className="mb-8 rounded-3xl bg-white p-8 shadow-sm">
+        <div className="mb-8 rounded-3xl border border-violet-100 bg-gradient-to-br from-white to-violet-50 p-6 shadow-sm sm:p-9">
           <p className="text-sm font-semibold text-violet-600">Matière</p>
 
-          <h1 className="mt-2 text-4xl font-bold text-gray-900">
-            📚 {subject.name}
+          <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950 sm:text-5xl">
+            {subject.name}
           </h1>
 
           <p className="mt-3 text-gray-600">
@@ -86,10 +86,10 @@ export default async function MatierePage({ params }: PageProps) {
               return (
                 <div
                   key={chapter.id}
-                  className="rounded-3xl bg-white p-6 shadow-sm"
+                  className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7"
                 >
                   <h2 className="mb-4 text-2xl font-bold text-gray-900">
-                    📂 {chapter.title}
+                    {chapter.title}
                   </h2>
 
                   <div className="space-y-3">
@@ -97,7 +97,7 @@ export default async function MatierePage({ params }: PageProps) {
                       <Link
                         key={course.id}
                         href={`/cours/${course.id}`}
-                        className="block rounded-2xl border border-gray-200 p-4 transition hover:bg-violet-50"
+                        className="block rounded-2xl border border-slate-200 p-4 transition hover:-translate-y-0.5 hover:border-violet-300 hover:bg-violet-50 hover:shadow-md"
                       >
                         <div className="font-semibold text-gray-900">
                           {course.title || course.file_name || "Cours"}

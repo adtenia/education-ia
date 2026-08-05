@@ -158,6 +158,8 @@ export default function MobileUploadPage() {
 
             <div className="mt-4 grid grid-cols-1 gap-4">
               {imagePreviews.map((preview, index) => (
+                // Les aperçus sont des URL blob locales temporaires.
+                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   key={preview}
                   src={preview}
@@ -180,7 +182,7 @@ export default function MobileUploadPage() {
 
         {isDone && (
           <div className="mt-6 rounded-2xl bg-green-50 p-4 font-semibold text-green-700">
-            Photos envoyées ✅ Tu peux retourner sur l'ordinateur.
+            Photos envoyées. Tu peux retourner sur l’ordinateur.
           </div>
         )}
       </div>

@@ -134,7 +134,7 @@ export default async function ProfilePage() {
 
           <div className="mt-6 grid gap-4 md:grid-cols-3">
             <button className="rounded-2xl bg-slate-50 p-5 text-left font-black text-slate-700 transition hover:bg-violet-50 hover:text-violet-700">
-              Modifier l'email
+              Modifier l’email
             </button>
 
             <button className="rounded-2xl bg-slate-50 p-5 text-left font-black text-slate-700 transition hover:bg-violet-50 hover:text-violet-700">

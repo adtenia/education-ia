@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 type RevisionSheetContentProps = {
   content: string;
@@ -10,116 +12,77 @@ export function cleanRevisionTitle(value: string) {
   return value.replace(emojiPattern, "").replace(/\s{2,}/g, " ").trim();
 }
 
-function renderInlineMarkdown(value: string): ReactNode[] {
-  return value.split(/(\*\*[^*]+\*\*)/g).map((part, index) => {
-    if (part.startsWith("**") && part.endsWith("**")) {
-      return <strong key={index}>{part.slice(2, -2)}</strong>;
-    }
-
-    return part;
-  });
+function headingText(children: ReactNode) {
+  return String(children).toLocaleLowerCase("fr");
 }
 
-export default function RevisionSheetContent({
-  content,
-}: RevisionSheetContentProps) {
-  const lines = content.replace(/\r\n/g, "\n").split("\n");
-  const blocks: ReactNode[] = [];
-  let index = 0;
+export default function RevisionSheetContent({ content }: RevisionSheetContentProps) {
+  const safeContent = content.replace(emojiPattern, "");
 
-  while (index < lines.length) {
-    const line = lines[index].trim();
+  return (
+    <div className="revision-markdown print-content text-slate-700">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          h1: ({ children }) => (
+            <h3 className="mb-7 text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">
+              {children}
+            </h3>
+          ),
+          h2: ({ children }) => {
+            const text = headingText(children);
+            const color = text.includes("définition")
+              ? "border-red-200 bg-red-50 text-red-950"
+              : text.includes("important") || text.includes("mémoriser") || text.includes("retenir")
+                ? "border-amber-200 bg-amber-50 text-amber-950"
+                : "border-blue-200 bg-blue-50 text-blue-950";
 
-    if (!line) {
-      index++;
-      continue;
-    }
-
-    const heading = line.match(/^(#{1,3})\s+(.+)$/);
-
-    if (heading) {
-      const title = cleanRevisionTitle(heading[2].replace(/\*\*/g, ""));
-      const level = heading[1].length;
-
-      if (level === 1) {
-        blocks.push(
-          <h3 key={index} className="mt-8 text-2xl font-bold tracking-tight text-slate-950 first:mt-0">
-            {title}
-          </h3>
-        );
-      } else {
-        blocks.push(
-          <h4 key={index} className="mt-7 text-xl font-bold text-slate-900 first:mt-0">
-            {title}
-          </h4>
-        );
-      }
-
-      index++;
-      continue;
-    }
-
-    if (/^[-*]\s+/.test(line)) {
-      const items: string[] = [];
-
-      while (index < lines.length && /^[-*]\s+/.test(lines[index].trim())) {
-        items.push(lines[index].trim().replace(/^[-*]\s+/, ""));
-        index++;
-      }
-
-      blocks.push(
-        <ul key={`ul-${index}`} className="my-5 space-y-2 pl-1">
-          {items.map((item, itemIndex) => (
-            <li key={itemIndex} className="flex gap-3 text-base leading-7 text-slate-700 sm:text-lg">
-              <span aria-hidden="true" className="mt-3 h-1.5 w-1.5 shrink-0 rounded-full bg-purple-500" />
-              <span>{renderInlineMarkdown(item)}</span>
+            return (
+              <h4 className={`mb-4 mt-9 rounded-xl border px-4 py-3 text-xl font-bold first:mt-0 ${color}`}>
+                {children}
+              </h4>
+            );
+          },
+          h3: ({ children }) => (
+            <h5 className="mb-3 mt-7 text-lg font-bold text-slate-900">{children}</h5>
+          ),
+          p: ({ children }) => (
+            <p className="my-4 text-base leading-8 sm:text-lg">{children}</p>
+          ),
+          strong: ({ children }) => (
+            <strong className="font-bold text-slate-950">{children}</strong>
+          ),
+          ul: ({ children }) => <ul className="my-5 space-y-2 pl-1">{children}</ul>,
+          ol: ({ children }) => (
+            <ol className="my-5 list-decimal space-y-2 pl-7 marker:font-bold marker:text-blue-700">
+              {children}
+            </ol>
+          ),
+          li: ({ children }) => (
+            <li className="ml-5 pl-1 text-base leading-7 marker:text-blue-600 sm:text-lg">
+              {children}
             </li>
-          ))}
-        </ul>
-      );
-      continue;
-    }
-
-    if (/^\d+[.)]\s+/.test(line)) {
-      const items: string[] = [];
-
-      while (index < lines.length && /^\d+[.)]\s+/.test(lines[index].trim())) {
-        items.push(lines[index].trim().replace(/^\d+[.)]\s+/, ""));
-        index++;
-      }
-
-      blocks.push(
-        <ol key={`ol-${index}`} className="my-5 list-decimal space-y-2 pl-7 text-base leading-7 text-slate-700 marker:font-bold marker:text-purple-600 sm:text-lg">
-          {items.map((item, itemIndex) => (
-            <li key={itemIndex} className="pl-2">
-              {renderInlineMarkdown(item)}
-            </li>
-          ))}
-        </ol>
-      );
-      continue;
-    }
-
-    const paragraphLines = [line];
-    index++;
-
-    while (
-      index < lines.length &&
-      lines[index].trim() &&
-      !/^(#{1,3})\s+/.test(lines[index].trim()) &&
-      !/^[-*]\s+/.test(lines[index].trim()) &&
-      !/^\d+[.)]\s+/.test(lines[index].trim())
-    ) {
-      paragraphLines.push(lines[index].trim());
-      index++;
-    }
-
-    blocks.push(
-      <p key={`p-${index}`} className="my-4 text-base leading-8 text-slate-700 sm:text-lg">
-        {renderInlineMarkdown(paragraphLines.join(" "))}
-      </p>
-    );
-  }
-
-  return <div>{blocks}</div>;
+          ),
+          blockquote: ({ children }) => (
+            <blockquote className="my-5 rounded-2xl border border-red-100 bg-red-50/70 px-5 py-1 text-red-950 shadow-sm">
+              {children}
+            </blockquote>
+          ),
+          table: ({ children }) => (
+            <div className="my-6 overflow-x-auto rounded-xl border border-slate-200">
+              <table className="w-full border-collapse text-left">{children}</table>
+            </div>
+          ),
+          th: ({ children }) => (
+            <th className="bg-slate-100 px-4 py-3 font-bold text-slate-950">{children}</th>
+          ),
+          td: ({ children }) => (
+            <td className="border-t border-slate-200 px-4 py-3 leading-7">{children}</td>
+          ),
+        }}
+      >
+        {safeContent}
+      </ReactMarkdown>
+    </div>
+  );
 }

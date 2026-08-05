@@ -3,14 +3,14 @@ import Link from "next/link";
 export default function Navbar() {
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-slate-200/70 bg-white/80 backdrop-blur-xl">
-      <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-8">
+      <div className="mx-auto flex h-18 max-w-7xl items-center justify-between px-4 sm:h-20 sm:px-8">
         <Link href="/" className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 text-sm font-black text-white shadow-lg shadow-violet-500/25">
             IA
           </div>
 
-          <span className="text-xl font-black tracking-tight text-slate-950">
-            Education IA
+          <span className="text-lg font-black tracking-tight text-slate-950 sm:text-xl">
+            EducationIA
           </span>
         </Link>
 
@@ -32,17 +32,17 @@ export default function Navbar() {
           </a>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
           <Link
             href="/login"
-            className="rounded-2xl border border-slate-200 bg-white px-6 py-3 font-bold text-slate-900 shadow-sm transition hover:border-violet-300 hover:shadow-md"
+            className="hidden rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-900 shadow-sm transition hover:border-violet-300 hover:shadow-md sm:inline-flex"
           >
             Se connecter
           </Link>
 
           <Link
             href="/register"
-            className="rounded-2xl bg-violet-600 px-6 py-3 font-bold text-white shadow-lg shadow-violet-600/25 transition hover:-translate-y-0.5 hover:bg-violet-700"
+            className="rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-violet-600/25 transition hover:-translate-y-0.5 hover:bg-violet-700 sm:px-6 sm:py-3"
           >
             Commencer
           </Link>

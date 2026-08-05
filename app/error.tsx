@@ -22,8 +22,8 @@ export default function Error({
         </h1>
 
         <p className="mt-4 text-slate-600">
-          Quelque chose s'est mal passé de notre côté. Tu peux réessayer, ou
-          revenir à l'accueil.
+          Quelque chose s’est mal passé de notre côté. Tu peux réessayer, ou
+          revenir à l’accueil.
         </p>
 
         <div className="mt-8 flex flex-col gap-3">
@@ -38,7 +38,7 @@ export default function Error({
             href="/"
             className="rounded-2xl border border-slate-200 px-6 py-3 font-bold text-slate-700 transition hover:border-violet-300"
           >
-            Retour à l'accueil
+            Retour à l’accueil
           </Link>
         </div>
       </div>

@@ -1,0 +1,104 @@
+.printMap,
+.printTitle {
+  display: none;
+}
+
+@page {
+  size: A4 landscape;
+  margin: 8mm;
+}
+
+@media print {
+  :global(html),
+  :global(body) {
+    width: auto !important;
+    height: 193mm !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    background: #ffffff !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  :global(body > main),
+  :global(main) {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    height: 193mm !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+  }
+
+  :global(body *) {
+    visibility: hidden !important;
+  }
+
+  .printArea,
+  .printArea * {
+    visibility: visible !important;
+  }
+
+  .printArea {
+    position: fixed;
+    z-index: 2147483647;
+    top: 0;
+    left: 0;
+    box-sizing: border-box;
+    display: flex;
+    width: 100%;
+    height: 193mm;
+    flex-direction: column;
+    overflow: hidden;
+    margin: 0;
+    padding: 0;
+    background: #ffffff;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .printTitle {
+    display: block;
+    flex: 0 0 auto;
+    margin: 0 0 2mm;
+    color: #0f172a;
+    font-size: 18pt;
+    font-weight: 800;
+    line-height: 1.15;
+    text-align: center;
+  }
+
+  .interactiveMap,
+  .noPrint,
+  :global(.react-flow__controls),
+  :global(.react-flow__panel),
+  :global(.react-flow__minimap) {
+    display: none !important;
+  }
+
+  .printMap {
+    display: block;
+    width: 100%;
+    height: 174mm;
+    max-height: 174mm;
+    min-height: 0;
+    flex: 0 0 174mm;
+    overflow: hidden;
+    opacity: 1 !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .printMap svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    opacity: 1 !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}

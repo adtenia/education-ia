@@ -22,6 +22,22 @@ type AiAnalysis = {
   subject: string;
   chapter: string;
   summary: string;
+  course: {
+    title: string;
+    introduction: string;
+    sections: Array<{
+      title: string;
+      paragraphs: string[];
+      key_points: string[];
+      definitions: Array<{
+        term: string;
+        definition: string;
+      }>;
+      examples: string[];
+    }>;
+    important_points: string[];
+    conclusion: string;
+  };
 };
 
 type ImageData = {
@@ -251,21 +267,37 @@ export default function ImportPage() {
 
     const mainFileName = selectedFiles.map((file) => file.name).join(", ");
 
-    const { data: newCours, error } = await supabase
+    const coursePayload = {
+      user_id: user.id,
+      title: aiAnalysis.chapter || selectedFiles[0].name,
+      file_name: mainFileName,
+      subject_id: subject.id,
+      chapter_id: chapter?.id ?? null,
+      detected_subject: subject.name,
+      detected_chapter: chapter?.title ?? aiAnalysis.chapter,
+      summary: aiAnalysis.summary,
+      analysis_status: "done",
+    };
+
+    let { data: newCours, error } = await supabase
       .from("cours")
       .insert({
-        user_id: user.id,
-        title: aiAnalysis.chapter || selectedFiles[0].name,
-        file_name: mainFileName,
-        subject_id: subject.id,
-        chapter_id: chapter?.id ?? null,
-        detected_subject: subject.name,
-        detected_chapter: chapter?.title ?? aiAnalysis.chapter,
-        summary: aiAnalysis.summary,
-        analysis_status: "done",
+        ...coursePayload,
+        course_content: aiAnalysis.course,
       })
       .select()
       .single();
+
+    if (error?.message.includes("course_content")) {
+      const legacyInsert = await supabase
+        .from("cours")
+        .insert(coursePayload)
+        .select()
+        .single();
+
+      newCours = legacyInsert.data;
+      error = legacyInsert.error;
+    }
 
     if (error || !newCours) {
       console.error(error);
@@ -329,7 +361,7 @@ export default function ImportPage() {
 
     try {
       aiAnalysis = JSON.parse(cleanAiJson(aiData.result));
-    } catch (error) {
+    } catch {
       console.error("JSON IA invalide :", aiData.result);
       alert("L'IA a répondu dans un format incorrect.");
       setIsLoading(false);
@@ -394,24 +426,24 @@ export default function ImportPage() {
     : "";
 
   return (
-    <main className="min-h-screen bg-slate-100 px-6 py-10">
+    <main className="min-h-screen bg-slate-50 px-4 py-8 sm:px-6 sm:py-12">
       <div className="mx-auto max-w-4xl">
         <Link href="/dashboard" className="text-sm font-semibold text-purple-700">
           ← Retour au Dashboard
         </Link>
 
-        <div className="mt-8 rounded-3xl bg-white p-10 shadow">
-          <h1 className="text-4xl font-bold text-slate-900">
+        <div className="mt-8 rounded-3xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-200/60 sm:p-10">
+          <h1 className="text-3xl font-black tracking-tight text-slate-950 sm:text-5xl">
 
             Importer un cours
           </h1>
 
           <p className="mt-3 text-lg text-slate-600">
-            Choisis jusqu'à {MAX_IMAGES} photos du même cours. L'IA va les lire
+            Choisis jusqu’à {MAX_IMAGES} photos du même cours. L’IA va les lire
             ensemble.
           </p>
 
-          <div className="mt-10 rounded-3xl border-2 border-dashed border-slate-300 bg-slate-50 p-10 text-center">
+          <div className="mt-10 rounded-3xl border-2 border-dashed border-violet-200 bg-violet-50/40 p-5 text-center sm:p-10">
             <h2 className="text-2xl font-bold text-slate-800">
               Ajoute tes photos de cours
             </h2>
@@ -439,7 +471,7 @@ export default function ImportPage() {
             {showQr && mobileUploadUrl && (
               <div className="mx-auto mt-8 max-w-md rounded-3xl bg-white p-6 shadow">
                 <p className="font-semibold text-slate-800">
-                  Scanne ce QR Code avec ton téléphone 📱
+                  Scanne ce QR Code avec ton téléphone
                 </p>
 
                 <div className="mt-5 flex justify-center">
@@ -457,7 +489,7 @@ export default function ImportPage() {
                 >
                   {isCheckingMobilePhotos
                     ? "Vérification..."
-                    : "J'ai envoyé les photos depuis le téléphone"}
+                    : "J’ai envoyé les photos depuis le téléphone"}
                 </button>
               </div>
             )}
@@ -478,6 +510,8 @@ export default function ImportPage() {
 
                 <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
                   {imagePreviews.map((preview, index) => (
+                    // Les aperçus sont des URL blob locales temporaires.
+                    // eslint-disable-next-line @next/next/no-img-element
                     <img
                       key={preview}
                       src={preview}
@@ -490,12 +524,12 @@ export default function ImportPage() {
                 {needsSubjectConfirmation ? (
                   <div className="mt-8 rounded-3xl bg-orange-50 p-6 text-left shadow">
                     <p className="font-semibold text-orange-800">
-                      Nous n'avons pas pu identifier la matière avec certitude.
+                      Nous n’avons pas pu identifier la matière avec certitude.
                     </p>
 
                     <p className="mt-2 text-sm text-orange-700">
-                      L'IA propose « {detectedSubjectName} ». Choisis la bonne
-                      matière avant d'enregistrer ce cours, pour être sûr qu'il
+                      L’IA propose « {detectedSubjectName} ». Choisis la bonne
+                      matière avant d’enregistrer ce cours, pour être sûr qu’il
                       ne soit pas classé au mauvais endroit.
                     </p>
 

@@ -120,23 +120,23 @@ export default async function DashboardPage({
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#fbfaff] px-8 py-8 text-slate-950">
+    <main className="relative min-h-screen overflow-hidden bg-[#fbfaff] px-4 py-8 text-slate-950 sm:px-8">
       <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_15%_10%,rgba(139,92,246,0.18),transparent_32%),radial-gradient(circle_at_85%_0%,rgba(99,102,241,0.13),transparent_30%),linear-gradient(180deg,#ffffff,#faf7ff)]" />
 
       <div className="mx-auto max-w-7xl">
-        <header className="flex items-center justify-between">
+        <header className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-black uppercase tracking-[0.25em] text-violet-600">
               Espace élève
             </p>
-            <h1 className="mt-3 text-4xl font-black">Tableau de bord</h1>
+            <h1 className="mt-3 text-3xl font-black tracking-tight sm:text-5xl">Tableau de bord</h1>
             <p className="mt-2 text-slate-500">{user.email}</p>
           </div>
 
           <div className="flex items-center gap-4">
             <Link
               href="/import"
-              className="rounded-2xl bg-violet-600 px-6 py-4 font-black text-white shadow-lg shadow-violet-600/25 transition hover:-translate-y-0.5 hover:bg-violet-700"
+              className="rounded-xl bg-violet-600 px-4 py-3 text-sm font-black text-white shadow-lg shadow-violet-600/25 transition hover:-translate-y-0.5 hover:bg-violet-700 sm:px-6 sm:py-4 sm:text-base"
             >
               + Importer un cours
             </Link>
@@ -191,7 +191,7 @@ export default async function DashboardPage({
         </section>
 
         <section className="mt-8 rounded-[2rem] border border-slate-200 bg-white p-8 shadow-xl shadow-violet-100/60">
-          <div className="mb-8 flex items-start justify-between">
+          <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h2 className="text-3xl font-black">Chapitres à reprendre</h2>
               <p className="mt-2 text-slate-500">
