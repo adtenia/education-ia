@@ -4,23 +4,18 @@ import { createClient } from "../../../utils/supabase/server";
 import QuizForm from "./QuizForm";
 
 type PageProps = {
-  params: Promise<{
-    id: string;
-  }>;
+  params: Promise<{ id: string }>;
 };
 
 export default async function QuizDetailPage({ params }: PageProps) {
   const { id } = await params;
-
   const supabase = await createClient();
 
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
-    redirect("/login");
-  }
+  if (!user) redirect("/login");
 
   const { data: quiz } = await supabase
     .from("quiz")
@@ -29,9 +24,7 @@ export default async function QuizDetailPage({ params }: PageProps) {
     .eq("user_id", user.id)
     .single();
 
-  if (!quiz) {
-    redirect("/cours");
-  }
+  if (!quiz) redirect("/cours");
 
   const { data: questions } = await supabase
     .from("quiz_questions")
@@ -40,34 +33,29 @@ export default async function QuizDetailPage({ params }: PageProps) {
     .order("created_at", { ascending: true });
 
   return (
-    <main className="min-h-screen bg-slate-50 px-6 py-10">
-      <div className="mx-auto max-w-4xl">
-        <div className="mb-8">
-          <Link
-            href={`/cours/${quiz.cours_id}`}
-            className="text-sm font-medium text-slate-600 hover:text-slate-900"
-          >
+    <main className="min-h-screen bg-slate-50 px-4 py-8 sm:px-6 sm:py-12">
+      <div className="mx-auto max-w-5xl">
+        <div className="mb-7">
+          <Link href={`/cours/${quiz.cours_id}`} className="text-sm font-semibold text-slate-600 hover:text-slate-950">
             ← Retour au cours
           </Link>
         </div>
 
-        <section className="rounded-3xl bg-white p-8 shadow-sm ring-1 ring-slate-200">
-          <p className="mb-2 text-sm font-medium text-emerald-600">Quiz</p>
-
-          <h1 className="text-3xl font-bold text-slate-950">
+        <header className="rounded-3xl bg-gradient-to-br from-emerald-50 to-white p-6 shadow-sm ring-1 ring-slate-200 sm:p-10">
+          <p className="text-sm font-bold uppercase tracking-widest text-emerald-700">Quiz</p>
+          <h1 className="mt-3 text-3xl font-bold tracking-tight text-slate-950 sm:text-5xl">
             {quiz.title || "Quiz de révision"}
           </h1>
-
-          <p className="mt-3 text-slate-500">
-            Réponds aux questions puis clique sur Valider.
+          <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600 sm:text-lg">
+            Réponds à chaque question, puis valide le quiz pour découvrir ton score et la correction détaillée.
           </p>
-        </section>
+        </header>
 
         <section className="mt-8">
           {questions && questions.length > 0 ? (
             <QuizForm quizId={quiz.id} questions={questions} />
           ) : (
-            <div className="rounded-3xl bg-white p-8 text-slate-500 shadow-sm ring-1 ring-slate-200">
+            <div className="rounded-3xl bg-white p-8 text-lg text-slate-500 shadow-sm ring-1 ring-slate-200">
               Aucune question trouvée pour ce quiz.
             </div>
           )}

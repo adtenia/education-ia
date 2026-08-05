@@ -1,5 +1,6 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "../../../utils/supabase/server";
 
@@ -23,6 +24,11 @@ export async function deleteCours(coursId: string) {
     data: { user },
   } = await supabase.auth.getUser();
 
+
+
+
+
+  
   if (!user) redirect("/login");
 
   await supabase.from("revision_sheets").delete().eq("cours_id", coursId);
@@ -55,12 +61,15 @@ export async function createRevisionSheet(coursId: string) {
 
   if (!cours) redirect("/cours");
 
+  const cookieStore = await cookies();
+
   const response = await fetch(
     `${process.env.NEXT_PUBLIC_APP_URL}/api/generate-revision-sheet`,
     {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Cookie: cookieStore.toString(),
       },
       body: JSON.stringify({
         summary: cours.summary || "",
@@ -119,12 +128,15 @@ export async function createQuiz(coursId: string) {
 
   if (!cours) redirect("/cours");
 
+  const cookieStore = await cookies();
+
   const response = await fetch(
     `${process.env.NEXT_PUBLIC_APP_URL}/api/generate-quiz`,
     {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Cookie: cookieStore.toString(),
       },
       body: JSON.stringify({
         summary: cours.summary || "",

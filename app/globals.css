@@ -24,3 +24,72 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Styles typographiques pour les contenus IA (cours, fiches, quiz) */
+.content-prose {
+  font-size: 16px;
+  line-height: 1.7;
+  color: #374151;
+}
+
+.content-prose h1 {
+  font-size: 2.25rem; /* 36px */
+  line-height: 1.15;
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  color: #0f172a;
+}
+
+.content-prose h2 {
+  font-size: 1.5rem; /* 24px */
+  margin-top: 0.75rem;
+  margin-bottom: 0.5rem;
+  color: #0f172a;
+}
+
+.content-prose p {
+  margin: 0 0 1rem 0;
+}
+
+.content-prose ul,
+.content-prose ol {
+  padding-left: 1.25rem;
+  margin: 0 0 1rem 0;
+}
+
+.content-prose li {
+  margin: 0.35rem 0;
+}
+
+/* Quiz specific */
+.quiz-question {
+  transition: box-shadow .12s ease, transform .06s ease;
+}
+
+.quiz-question h2 {
+  font-size: 1.125rem; /* 18px */
+}
+
+.quiz-answer {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+}
+
+.quiz-answer input[type="radio"] {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+/* Highlight result box */
+.quiz-result {
+  border-left: 4px solid rgba(16,185,129,0.2);
+  padding-left: 1rem;
+}
+
+/* Responsive: reduce large titles on small screens */
+@media (max-width: 640px) {
+  .content-prose h1 { font-size: 1.6rem; }
+  .content-prose h2 { font-size: 1.25rem; }
+}
