@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Navbar from "../components/Navbar";
+import SubscribeButton from "../components/SubscribeButton";
 
 const features = [
   {
@@ -207,11 +208,11 @@ export default function Home() {
             </h2>
 
             <p className="mx-auto mt-5 max-w-2xl text-center text-lg leading-8 text-slate-600">
-              Deux offres payantes sont prévues. Les paiements seront gérés plus
-              tard avec Stripe.
+              Choisis la formule adaptée à tes révisions. Standard est disponible
+              dès maintenant en environnement de test.
             </p>
 
-            <div className="mt-14 grid gap-8 md:grid-cols-2">
+            <div className="mt-14 grid gap-8 md:grid-cols-3">
               <div className="rounded-[2rem] border border-slate-200 bg-white p-10 shadow-sm">
                 <h3 className="text-3xl font-black">Standard</h3>
 
@@ -221,7 +222,7 @@ export default function Home() {
                 </p>
 
                 <div className="mt-8 text-5xl font-black">
-                  9,99€
+                  9,99 €
                   <span className="text-lg font-bold text-slate-500">
                     {" "}
                     / mois
@@ -229,23 +230,25 @@ export default function Home() {
                 </div>
 
                 <ul className="mt-8 space-y-4 text-slate-600">
-                  <li>Import de cours</li>
-                  <li>Fiches de révision</li>
-                  <li>Quiz d’entraînement</li>
-                  <li>Suivi de progression</li>
+                  <li>2 générations ou régénérations du cours</li>
+                  <li>3 quiz par cours</li>
+                  <li>1 fiche de révision par cours</li>
+                  <li>1 carte mentale par cours</li>
+                  <li>Export PDF</li>
+                  <li>Historique des cours</li>
                 </ul>
 
-                <Link
-                  href="/register"
+                <SubscribeButton
+                  plan="standard"
+                  returnTo="/"
+                  text="Choisir Standard"
                   className="mt-10 inline-block rounded-2xl bg-slate-950 px-8 py-4 font-black text-white transition hover:bg-slate-800"
-                >
-                  Choisir Standard
-                </Link>
+                />
               </div>
 
               <div className="relative rounded-[2rem] border-2 border-violet-600 bg-white p-10 shadow-xl shadow-violet-600/10">
                 <div className="absolute right-8 top-8 rounded-full bg-violet-600 px-4 py-2 text-sm font-black text-white">
-                  Recommandé
+                  Bientôt disponible
                 </div>
 
                 <h3 className="text-3xl font-black">Premium</h3>
@@ -256,7 +259,7 @@ export default function Home() {
                 </p>
 
                 <div className="mt-8 text-5xl font-black">
-                  19,99€
+                  14,99 €
                   <span className="text-lg font-bold text-slate-500">
                     {" "}
                     / mois
@@ -265,17 +268,55 @@ export default function Home() {
 
                 <ul className="mt-8 space-y-4 text-slate-600">
                   <li>Tout Standard</li>
-                  <li>Plus de générations IA</li>
-                  <li>Exercices ciblés avancés</li>
-                  <li>Cahier de révision personnalisé</li>
+                  <li>Davantage de générations</li>
+                  <li>Suivi intelligent des erreurs</li>
+                  <li>Exercices personnalisés</li>
+                  <li>Cahier de vacances personnalisé</li>
                 </ul>
 
-                <Link
-                  href="/register"
-                  className="mt-10 inline-block rounded-2xl bg-violet-600 px-8 py-4 font-black text-white shadow-lg shadow-violet-600/25 transition hover:bg-violet-700"
+                <button
+                  type="button"
+                  disabled
+                  className="mt-10 inline-block cursor-not-allowed rounded-2xl bg-violet-600 px-8 py-4 font-black text-white opacity-60 shadow-lg shadow-violet-600/25 transition"
                 >
-                  Choisir Premium
-                </Link>
+                  Bientôt disponible
+                </button>
+              </div>
+
+              <div className="rounded-[2rem] border border-slate-200 bg-white p-10 shadow-sm">
+                <div className="inline-flex rounded-full bg-slate-100 px-4 py-2 text-sm font-black text-slate-600">
+                  Bientôt disponible
+                </div>
+
+                <h3 className="mt-5 text-3xl font-black">Pro</h3>
+
+                <p className="mt-4 leading-8 text-slate-600">
+                  Pour préparer les examens avec une stratégie de révision complète.
+                </p>
+
+                <div className="mt-8 text-5xl font-black">
+                  19,99 €
+                  <span className="text-lg font-bold text-slate-500">
+                    {" "}
+                    / mois
+                  </span>
+                </div>
+
+                <ul className="mt-8 space-y-4 text-slate-600">
+                  <li>Tout Premium</li>
+                  <li>Examens blancs</li>
+                  <li>Plan de révision intelligent</li>
+                  <li>Statistiques avancées</li>
+                  <li>Outils IA exclusifs</li>
+                </ul>
+
+                <button
+                  type="button"
+                  disabled
+                  className="mt-10 inline-block cursor-not-allowed rounded-2xl bg-slate-950 px-8 py-4 font-black text-white opacity-50 transition"
+                >
+                  Bientôt disponible
+                </button>
               </div>
             </div>
           </div>

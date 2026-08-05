@@ -29,7 +29,13 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/dashboard");
+    const requestedRedirect = new URLSearchParams(window.location.search).get("redirect");
+    const safeRedirect =
+      requestedRedirect?.startsWith("/") && !requestedRedirect.startsWith("//")
+        ? requestedRedirect
+        : "/dashboard";
+
+    router.push(safeRedirect);
     router.refresh();
   }
 
