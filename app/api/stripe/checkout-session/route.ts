@@ -39,6 +39,10 @@ export async function GET(request: Request) {
     return Response.json({
       status: session.status,
       payment_status: session.payment_status,
+      subscription_id:
+        typeof session.subscription === "string"
+          ? session.subscription
+          : session.subscription?.id || null,
       metadata: {
         returnTo: normalizeInternalReturnPath(session.metadata?.returnTo),
         plan: session.metadata?.plan || null,

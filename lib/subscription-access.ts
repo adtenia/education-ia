@@ -12,6 +12,7 @@ export type SubscriptionAccess = {
   plan: SubscriptionPlan;
   status: string;
   planUnlockedAt: string | null;
+  stripeSubscriptionId: string | null;
 };
 
 export async function getSubscriptionAccess(): Promise<SubscriptionAccess> {
@@ -28,12 +29,13 @@ export async function getSubscriptionAccess(): Promise<SubscriptionAccess> {
       plan: "none",
       status: "inactive",
       planUnlockedAt: null,
+      stripeSubscriptionId: null,
     };
   }
 
   const { data, error } = await supabase
     .from("user_subscriptions")
-    .select("plan, subscription_status, plan_unlocked_at")
+    .select("plan, subscription_status, plan_unlocked_at, stripe_subscription_id")
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -51,6 +53,7 @@ export async function getSubscriptionAccess(): Promise<SubscriptionAccess> {
     plan,
     status,
     planUnlockedAt: data?.plan_unlocked_at || null,
+    stripeSubscriptionId: data?.stripe_subscription_id || null,
   };
 }
 

@@ -1,17 +1,34 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
+import { AnimatePresence } from "framer-motion";
+import type { SubscriptionPlan } from "../lib/subscription-access";
+import SubscriptionUnlockAnimation from "./SubscriptionUnlockAnimation";
+import { subscriptionActivationMarker } from "../lib/subscription-marker";
+
+type ActiveSubscriptionPlan = Exclude<SubscriptionPlan, "none">;
 
 type SubscriptionStatus = {
   userId: string;
-  plan: string;
+  plan: SubscriptionPlan;
   status: string;
   hasAccess: boolean;
   planUnlockedAt: string | null;
+  stripeSubscriptionId?: string | null;
 };
 
 export default function SubscriptionUnlockNotice() {
-  const [visible, setVisible] = useState(false);
+  const pathname = usePathname();
+  const [activePlan, setActivePlan] = useState<ActiveSubscriptionPlan | null>(null);
+  const markerToSave = useRef<string | null>(null);
+
+  const markAnimationAsPresented = useCallback(() => {
+    if (markerToSave.current) {
+      window.localStorage.setItem(markerToSave.current, "seen");
+      markerToSave.current = null;
+    }
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -31,7 +48,9 @@ export default function SubscriptionUnlockNotice() {
 
         if (
           !subscription?.hasAccess ||
-          subscription.plan !== "standard" ||
+          (subscription.plan !== "standard" &&
+            subscription.plan !== "premium" &&
+            subscription.plan !== "pro") ||
           !subscription.planUnlockedAt
         ) {
           remainingAttempts -= 1;
@@ -41,16 +60,23 @@ export default function SubscriptionUnlockNotice() {
           return;
         }
 
-        window.sessionStorage.removeItem("educationia-checkout-pending");
         window.dispatchEvent(
           new CustomEvent("educationia:subscription-updated", { detail: subscription })
         );
-        const marker = `educationia-plan-unlocked:${subscription.userId}:${subscription.planUnlockedAt}`;
+
+        if (pathname === "/abonnement/succes") return;
+
+        window.sessionStorage.removeItem("educationia-checkout-pending");
+        const marker = subscriptionActivationMarker(
+          subscription.userId,
+          subscription.plan,
+          subscription.planUnlockedAt
+        );
         if (window.localStorage.getItem(marker)) return;
 
-        window.localStorage.setItem(marker, "seen");
-        setVisible(true);
-        hideTimer = setTimeout(() => setVisible(false), 4500);
+        markerToSave.current = marker;
+        setActivePlan(subscription.plan);
+        hideTimer = setTimeout(() => setActivePlan(null), 2500);
       } catch (error) {
         if (!(error instanceof DOMException && error.name === "AbortError")) {
           console.error("Vérification de l'activation impossible :", error);
@@ -65,16 +91,16 @@ export default function SubscriptionUnlockNotice() {
       if (hideTimer) clearTimeout(hideTimer);
       if (pollTimer) clearTimeout(pollTimer);
     };
-  }, []);
-
-  if (!visible) return null;
+  }, [pathname]);
 
   return (
-    <aside className="fixed inset-x-4 top-5 z-[100] mx-auto max-w-md rounded-2xl border border-sky-200 bg-sky-50/95 p-5 text-sky-950 shadow-xl shadow-sky-200/40 backdrop-blur-xl">
-      <p className="text-lg font-black">Standard est maintenant actif</p>
-      <p className="mt-1 text-sm font-medium text-sky-800">
-        Tes outils EducationIA sont débloqués.
-      </p>
-    </aside>
+    <AnimatePresence>
+      {activePlan && (
+        <SubscriptionUnlockAnimation
+          plan={activePlan}
+          onPresented={markAnimationAsPresented}
+        />
+      )}
+    </AnimatePresence>
   );
 }

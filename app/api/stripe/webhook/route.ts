@@ -22,7 +22,8 @@ function currentPeriodEnd(subscription: Stripe.Subscription) {
 async function syncSubscription(
   subscription: Stripe.Subscription,
   eventCreatedAt: number,
-  statusOverride?: string
+  statusOverride?: string,
+  replaceSubscription = false
 ) {
   const expectedPriceId = process.env.STRIPE_STANDARD_PRICE_ID;
   const userId = subscription.metadata.user_id;
@@ -49,6 +50,7 @@ async function syncSubscription(
     p_cancel_at_period_end: subscription.cancel_at_period_end,
     p_access_allowed: accessAllowed,
     p_event_created_at: eventCreatedAt,
+    p_replace_subscription: replaceSubscription,
   });
 
   if (error) throw error;
@@ -96,7 +98,7 @@ export async function POST(request: Request) {
 
         if (subscriptionId && session.metadata?.user_id && session.metadata.plan === "standard") {
           const subscription = await retrieveSubscription(subscriptionId);
-          await syncSubscription(subscription, event.created);
+          await syncSubscription(subscription, event.created, undefined, true);
         }
         break;
       }

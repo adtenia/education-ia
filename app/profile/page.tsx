@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import LogoutButton from "../../components/LogoutButton";
 import ProfileAvatar from "../../components/ProfileAvatar";
 import SubscriptionBadge from "../../components/SubscriptionBadge";
+import ResetSubscriptionAnimationButton from "../../components/ResetSubscriptionAnimationButton";
 import { getSubscriptionAccess } from "../../lib/subscription-access";
 import { createClient } from "../../utils/supabase/server";
 
@@ -18,6 +19,9 @@ export default async function ProfilePage() {
   }
 
   const subscription = await getSubscriptionAccess();
+  const stripeTestMode =
+    process.env.NODE_ENV === "development" ||
+    Boolean(process.env.STRIPE_SECRET_KEY?.startsWith("sk_test_"));
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#fbfaff] px-8 py-8 text-slate-950">
@@ -114,6 +118,13 @@ export default async function ProfilePage() {
                   <p className="mt-2 text-sm font-semibold text-slate-500">
                     Portail de gestion bientôt disponible
                   </p>
+                  {stripeTestMode && subscription.planUnlockedAt && (
+                      <ResetSubscriptionAnimationButton
+                        userId={user.id}
+                        plan={subscription.plan}
+                        planUnlockedAt={subscription.planUnlockedAt}
+                      />
+                    )}
                 </div>
               )}
             </div>

@@ -13,5 +13,9 @@ export async function GET() {
     status: subscription.status,
     hasAccess: subscription.hasAccess,
     planUnlockedAt: subscription.planUnlockedAt,
+    stripeSubscriptionId: subscription.stripeSubscriptionId,
+    testMode:
+      process.env.NODE_ENV === "development" ||
+      Boolean(process.env.STRIPE_SECRET_KEY?.startsWith("sk_test_")),
   });
 }
