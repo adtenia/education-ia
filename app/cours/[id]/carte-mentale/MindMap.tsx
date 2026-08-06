@@ -547,13 +547,14 @@ function StaticMindMap({ layout }: { layout: LayoutResult }) {
 }
 
 type MindMapProps = {
+  courseId: string;
   initialData: MindMapData | null;
   fallbackTitle: string;
   fallbackSummary: string;
   fallbackCourse: Record<string, unknown> | null;
 };
 
-export default function MindMap({ initialData, fallbackTitle, fallbackSummary, fallbackCourse }: MindMapProps) {
+export default function MindMap({ courseId, initialData, fallbackTitle, fallbackSummary, fallbackCourse }: MindMapProps) {
   const [isMounted, setIsMounted] = useState(false);
   const [data, setData] = useState<MindMapData | null>(initialData);
   const [error, setError] = useState("");
@@ -591,7 +592,7 @@ export default function MindMap({ initialData, fallbackTitle, fallbackSummary, f
     void fetch("/api/generate-mind-map", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ course: fallbackCourse, summary: fallbackSummary, title: fallbackTitle }),
+      body: JSON.stringify({ courseId, course: fallbackCourse, summary: fallbackSummary, title: fallbackTitle }),
       signal: controller.signal,
     }).then((response) => response.json()).then((payload) => {
       if (!payload.success) throw new Error(payload.error || "Génération impossible");
@@ -600,7 +601,7 @@ export default function MindMap({ initialData, fallbackTitle, fallbackSummary, f
       if (!controller.signal.aborted) { console.error(requestError); setError("La carte mentale n’a pas pu être générée."); }
     });
     return () => controller.abort();
-  }, [fallbackCourse, fallbackSummary, fallbackTitle, initialData]);
+  }, [courseId, fallbackCourse, fallbackSummary, fallbackTitle, initialData]);
 
   if (!isMounted || !layout) {
     return <div className={`${styles.interactiveMap} ${CONTAINER_CLASS} flex items-center justify-center p-8 text-center text-slate-500`}>{error || "Création de la carte mentale…"}</div>;

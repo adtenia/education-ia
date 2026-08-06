@@ -2,6 +2,7 @@ import OpenAI from "openai";
 import { NextResponse } from "next/server";
 import { createClient } from "../../../utils/supabase/server";
 import { getSubscriptionAccess, subscriptionRequiredResponse } from "../../../lib/subscription-access";
+import { recordMindMapGenerated } from "../../../lib/progress-events";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -58,7 +59,20 @@ export async function POST(request: Request) {
     const subscription = await getSubscriptionAccess();
     if (!subscription.hasAccess) return subscriptionRequiredResponse();
 
-    const { course, summary, title } = await request.json();
+    const { courseId, course, summary, title } = await request.json();
+    if (typeof courseId !== "string" || !courseId) {
+      return NextResponse.json({ success: false, error: "Cours manquant." }, { status: 400 });
+    }
+
+    const { data: ownedCourse } = await supabase
+      .from("cours")
+      .select("id")
+      .eq("id", courseId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (!ownedCourse) {
+      return NextResponse.json({ success: false, error: "Cours introuvable." }, { status: 404 });
+    }
     const hasCourse = course && typeof course === "object";
 
     if (!hasCourse && (typeof summary !== "string" || !summary.trim())) {
@@ -105,7 +119,9 @@ Règles impératives :
       ],
     });
 
-    return NextResponse.json({ success: true, result: JSON.parse(response.output_text) });
+    const result = JSON.parse(response.output_text);
+    await recordMindMapGenerated({ courseId });
+    return NextResponse.json({ success: true, result });
   } catch (error) {
     console.error(error);
     return NextResponse.json({ success: false, error: String(error) });

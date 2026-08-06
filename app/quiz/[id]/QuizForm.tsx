@@ -43,7 +43,7 @@ export default function QuizForm({ quizId, questions }: QuizFormProps) {
     setSelectedAnswers(submittedAnswers);
     setScore(goodAnswers);
 
-    await saveQuizScore(quizId, percent);
+    await saveQuizScore(quizId, percent, crypto.randomUUID());
   }
 
   return (

@@ -1,22 +1,37 @@
 "use client";
 
 import type { SubscriptionPlan } from "../lib/subscription-access";
-import { subscriptionActivationMarker } from "../lib/subscription-marker";
+import {
+  SUBSCRIPTION_UNLOCK_PENDING_KEY,
+  subscriptionActivationMarker,
+} from "../lib/subscription-marker";
 
 type ResetSubscriptionAnimationButtonProps = {
   userId: string;
   plan: Exclude<SubscriptionPlan, "none">;
   planUnlockedAt: string;
+  subscriptionId: string | null;
 };
 
 export default function ResetSubscriptionAnimationButton({
   userId,
   plan,
   planUnlockedAt,
+  subscriptionId,
 }: ResetSubscriptionAnimationButtonProps) {
   function resetAnimationMarker() {
     window.localStorage.removeItem(
-      subscriptionActivationMarker(userId, plan, planUnlockedAt)
+      subscriptionActivationMarker(userId, plan, planUnlockedAt, subscriptionId)
+    );
+    window.sessionStorage.setItem(
+      SUBSCRIPTION_UNLOCK_PENDING_KEY,
+      JSON.stringify({
+        userId,
+        plan,
+        sessionId: `test_${Date.now()}`,
+        subscriptionId,
+        createdAt: new Date().toISOString(),
+      })
     );
     window.location.reload();
   }

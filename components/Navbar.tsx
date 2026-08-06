@@ -1,6 +1,22 @@
 import Link from "next/link";
+import { createClient } from "../utils/supabase/server";
+import NavbarUserMenu from "./NavbarUserMenu";
 
-export default function Navbar() {
+export default async function Navbar() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const displayName =
+    typeof user?.user_metadata?.full_name === "string"
+      ? user.user_metadata.full_name
+      : typeof user?.user_metadata?.name === "string"
+        ? user.user_metadata.name
+        : null;
+  const avatarUrl =
+    typeof user?.user_metadata?.avatar_url === "string"
+      ? user.user_metadata.avatar_url
+      : null;
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-slate-200/70 bg-white/80 backdrop-blur-xl">
       <div className="mx-auto flex h-18 max-w-7xl items-center justify-between px-4 sm:h-20 sm:px-8">
@@ -43,19 +59,29 @@ export default function Navbar() {
             Voir les offres
           </Link>
 
-          <Link
-            href="/login"
-            className="hidden rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-900 shadow-sm transition hover:border-violet-300 hover:shadow-md sm:inline-flex"
-          >
-            Se connecter
-          </Link>
+          {user ? (
+            <NavbarUserMenu
+              email={user.email || null}
+              displayName={displayName}
+              avatarUrl={avatarUrl}
+            />
+          ) : (
+            <>
+              <Link
+                href="/login"
+                className="hidden rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-900 shadow-sm transition hover:border-violet-300 hover:shadow-md sm:inline-flex"
+              >
+                Se connecter
+              </Link>
 
-          <Link
-            href="/register"
-            className="rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-violet-600/25 transition hover:-translate-y-0.5 hover:bg-violet-700 sm:px-6 sm:py-3"
-          >
-            Commencer
-          </Link>
+              <Link
+                href="/register"
+                className="rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-violet-600/25 transition hover:-translate-y-0.5 hover:bg-violet-700 sm:px-6 sm:py-3"
+              >
+                Commencer
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </nav>

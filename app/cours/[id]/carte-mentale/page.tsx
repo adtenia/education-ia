@@ -8,6 +8,7 @@ import MindMap, {
 import styles from "./MindMap.module.css";
 import PrintButton from "./PrintButton";
 import { getSubscriptionAccess } from "../../../../lib/subscription-access";
+import { recordMindMapGenerated } from "../../../../lib/progress-events";
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -140,6 +141,9 @@ export default async function MindMapPage({ params }: PageProps) {
 
   const content = getStructuredContent(course);
   const initialData = content ? structuredMindMap(content) : null;
+  if (initialData) {
+    await recordMindMapGenerated({ courseId: id });
+  }
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-8 sm:px-6 sm:py-12">
@@ -162,6 +166,7 @@ export default async function MindMapPage({ params }: PageProps) {
         <section className={styles.printArea}>
           <h1 className={styles.printTitle}>{course.title || "Carte mentale du cours"}</h1>
         <MindMap
+          courseId={id}
           initialData={initialData}
           fallbackTitle={course.title || "Cours"}
           fallbackSummary={course.summary || ""}

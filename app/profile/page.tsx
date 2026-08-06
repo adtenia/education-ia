@@ -123,6 +123,7 @@ export default async function ProfilePage() {
                         userId={user.id}
                         plan={subscription.plan}
                         planUnlockedAt={subscription.planUnlockedAt}
+                        subscriptionId={subscription.stripeSubscriptionId}
                       />
                     )}
                 </div>

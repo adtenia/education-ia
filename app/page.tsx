@@ -76,7 +76,7 @@ export default function Home() {
 
                 <Link
                   href="/pricing"
-                  className="rounded-2xl border border-violet-200 bg-violet-50 px-8 py-4 text-lg font-black text-violet-700 shadow-sm transition hover:-translate-y-1 hover:border-violet-300 hover:bg-violet-100"
+                  className="min-w-52 rounded-2xl bg-gradient-to-r from-violet-700 to-indigo-600 px-9 py-4.5 text-center text-lg font-black text-white shadow-xl shadow-violet-600/30 transition hover:-translate-y-1 hover:shadow-2xl hover:shadow-violet-600/35"
                 >
                   Voir les offres
                 </Link>

@@ -33,7 +33,7 @@ export default function LoginPage() {
     const safeRedirect =
       requestedRedirect?.startsWith("/") && !requestedRedirect.startsWith("//")
         ? requestedRedirect
-        : "/dashboard";
+        : "/";
 
     router.push(safeRedirect);
     router.refresh();

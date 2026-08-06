@@ -1,8 +1,13 @@
 "use server";
 
 import { createClient } from "../../../utils/supabase/server";
+import { recordQuizCompleted } from "../../../lib/progress-events";
 
-export async function saveQuizScore(quizId: string, score: number) {
+export async function saveQuizScore(
+  quizId: string,
+  score: number,
+  attemptId?: string
+) {
   const supabase = await createClient();
 
   const {
@@ -24,11 +29,15 @@ export async function saveQuizScore(quizId: string, score: number) {
       score,
     })
     .eq("id", quizId)
+    .eq("user_id", user.id)
     .select();
 
   if (updateQuizError) {
     console.error(updateQuizError);
+    return;
   }
+
+  await recordQuizCompleted({ quizId, score, attemptId });
 
   const { data: quiz, error: quizError } = await supabase
     .from("quiz")
