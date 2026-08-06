@@ -112,9 +112,9 @@ export default async function ProfilePage() {
                 </Link>
               ) : (
                 <div className="mt-5">
-                  <button type="button" disabled className="cursor-not-allowed rounded-2xl bg-slate-200 px-5 py-3 font-black text-slate-500">
-                    Gérer mon abonnement
-                  </button>
+                  <Link href="/profile" className="inline-flex rounded-2xl bg-violet-600 px-5 py-3 font-black text-white transition hover:bg-violet-700">
+                    Mon abonnement
+                  </Link>
                   <p className="mt-2 text-sm font-semibold text-slate-500">
                     Portail de gestion bientôt disponible
                   </p>

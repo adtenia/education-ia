@@ -5,7 +5,11 @@ import { usePathname } from "next/navigation";
 import { AnimatePresence } from "framer-motion";
 import type { SubscriptionPlan } from "../lib/subscription-access";
 import SubscriptionUnlockAnimation from "./SubscriptionUnlockAnimation";
-import { subscriptionActivationMarker } from "../lib/subscription-marker";
+import {
+  readPendingSubscriptionUnlock,
+  SUBSCRIPTION_UNLOCK_PENDING_KEY,
+  subscriptionActivationMarker,
+} from "../lib/subscription-marker";
 
 type ActiveSubscriptionPlan = Exclude<SubscriptionPlan, "none">;
 
@@ -24,6 +28,7 @@ export default function SubscriptionUnlockNotice() {
   const markerToSave = useRef<string | null>(null);
 
   const markAnimationAsPresented = useCallback(() => {
+    window.sessionStorage.removeItem(SUBSCRIPTION_UNLOCK_PENDING_KEY);
     if (markerToSave.current) {
       window.localStorage.setItem(markerToSave.current, "seen");
       markerToSave.current = null;
@@ -33,13 +38,14 @@ export default function SubscriptionUnlockNotice() {
   useEffect(() => {
     const controller = new AbortController();
     let hideTimer: ReturnType<typeof setTimeout> | undefined;
-    let pollTimer: ReturnType<typeof setTimeout> | undefined;
-    const checkoutPending = window.sessionStorage.getItem("educationia-checkout-pending") === "standard";
-    let remainingAttempts = checkoutPending ? 15 : 1;
 
     async function checkSubscription() {
+      const pending = readPendingSubscriptionUnlock();
+      if (!pending || pathname === "/abonnement/succes") return;
+
       try {
         const response = await fetch("/api/subscription/status", {
+          cache: "no-store",
           signal: controller.signal,
         });
         const subscription = response.ok
@@ -51,12 +57,11 @@ export default function SubscriptionUnlockNotice() {
           (subscription.plan !== "standard" &&
             subscription.plan !== "premium" &&
             subscription.plan !== "pro") ||
-          !subscription.planUnlockedAt
+          !subscription.planUnlockedAt ||
+          subscription.userId !== pending.userId ||
+          subscription.plan !== pending.plan ||
+          subscription.planUnlockedAt !== pending.unlockedAt
         ) {
-          remainingAttempts -= 1;
-          if (remainingAttempts > 0) {
-            pollTimer = setTimeout(() => void checkSubscription(), 2000);
-          }
           return;
         }
 
@@ -64,15 +69,15 @@ export default function SubscriptionUnlockNotice() {
           new CustomEvent("educationia:subscription-updated", { detail: subscription })
         );
 
-        if (pathname === "/abonnement/succes") return;
-
-        window.sessionStorage.removeItem("educationia-checkout-pending");
         const marker = subscriptionActivationMarker(
           subscription.userId,
           subscription.plan,
           subscription.planUnlockedAt
         );
-        if (window.localStorage.getItem(marker)) return;
+        if (window.localStorage.getItem(marker)) {
+          window.sessionStorage.removeItem(SUBSCRIPTION_UNLOCK_PENDING_KEY);
+          return;
+        }
 
         markerToSave.current = marker;
         setActivePlan(subscription.plan);
@@ -89,7 +94,6 @@ export default function SubscriptionUnlockNotice() {
     return () => {
       controller.abort();
       if (hideTimer) clearTimeout(hideTimer);
-      if (pollTimer) clearTimeout(pollTimer);
     };
   }, [pathname]);
 

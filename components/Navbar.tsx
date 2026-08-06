@@ -9,7 +9,7 @@ export default function Navbar() {
             IA
           </div>
 
-          <span className="text-lg font-black tracking-tight text-slate-950 sm:text-xl">
+          <span className="text-lg font-black tracking-tight text-slate-950 max-[480px]:hidden sm:text-xl">
             EducationIA
           </span>
         </Link>
@@ -23,9 +23,12 @@ export default function Navbar() {
             Comment ça marche
           </a>
 
-          <a href="#tarifs" className="hover:text-violet-700">
-            Tarifs
-          </a>
+          <Link
+            href="/pricing"
+            className="rounded-xl bg-violet-50 px-4 py-2 text-violet-700 transition hover:bg-violet-100"
+          >
+            Voir les offres
+          </Link>
 
           <a href="#apropos" className="hover:text-violet-700">
             À propos
@@ -33,6 +36,13 @@ export default function Navbar() {
         </div>
 
         <div className="flex items-center gap-2 sm:gap-4">
+          <Link
+            href="/pricing"
+            className="rounded-xl border border-violet-200 bg-violet-50 px-3 py-2.5 text-sm font-bold text-violet-700 transition hover:border-violet-300 hover:bg-violet-100 md:hidden"
+          >
+            Voir les offres
+          </Link>
+
           <Link
             href="/login"
             className="hidden rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-900 shadow-sm transition hover:border-violet-300 hover:shadow-md sm:inline-flex"

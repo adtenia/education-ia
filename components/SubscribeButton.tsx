@@ -43,7 +43,6 @@ export default function SubscribeButton({
         throw new Error(data.error || "Impossible de démarrer le paiement.");
       }
 
-      window.sessionStorage.setItem("educationia-checkout-pending", "standard");
       window.location.href = data.url;
     } catch (checkoutError) {
       setError(

@@ -73,6 +73,13 @@ export default function Home() {
                 >
                   Voir le fonctionnement
                 </a>
+
+                <Link
+                  href="/pricing"
+                  className="rounded-2xl border border-violet-200 bg-violet-50 px-8 py-4 text-lg font-black text-violet-700 shadow-sm transition hover:-translate-y-1 hover:border-violet-300 hover:bg-violet-100"
+                >
+                  Voir les offres
+                </Link>
               </div>
 
               <div className="mt-10 flex flex-wrap gap-4 text-sm font-bold text-slate-500">

@@ -7,6 +7,7 @@ import {
   DEFAULT_RETURN_PATH,
   normalizeInternalReturnPath,
 } from "../../../lib/internal-return-path";
+import { SUBSCRIPTION_UNLOCK_PENDING_KEY } from "../../../lib/subscription-marker";
 
 type SuccessRedirectProps = {
   sessionId?: string;
@@ -23,6 +24,7 @@ type CheckoutSessionResponse = {
 };
 
 type SubscriptionStatusResponse = {
+  userId?: string;
   plan?: string;
   subscription_status?: string;
   plan_unlocked_at?: string | null;
@@ -87,8 +89,10 @@ export default function SuccessRedirect({ sessionId }: SuccessRedirectProps) {
             const subscription = (await statusResponse.json()) as SubscriptionStatusResponse;
             const active =
               statusResponse.ok &&
+              Boolean(subscription.userId) &&
               subscription.plan !== undefined &&
               subscription.plan !== "none" &&
+              Boolean(subscription.plan_unlocked_at) &&
               (subscription.subscription_status === "active" ||
                 subscription.subscription_status === "trialing");
 
@@ -105,8 +109,12 @@ export default function SuccessRedirect({ sessionId }: SuccessRedirectProps) {
             if (active) {
               stopped = true;
               window.sessionStorage.setItem(
-                "educationia-checkout-pending",
-                subscription.plan || checkout.metadata?.plan || "standard"
+                SUBSCRIPTION_UNLOCK_PENDING_KEY,
+                JSON.stringify({
+                  userId: subscription.userId,
+                  plan: subscription.plan || checkout.metadata?.plan || "standard",
+                  unlockedAt: subscription.plan_unlocked_at,
+                })
               );
               router.replace(returnTo);
               return;
