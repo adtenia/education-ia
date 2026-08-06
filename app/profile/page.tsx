@@ -2,6 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import LogoutButton from "../../components/LogoutButton";
 import ProfileAvatar from "../../components/ProfileAvatar";
+import SubscriptionBadge from "../../components/SubscriptionBadge";
+import { getSubscriptionAccess } from "../../lib/subscription-access";
 import { createClient } from "../../utils/supabase/server";
 
 export default async function ProfilePage() {
@@ -14,6 +16,8 @@ export default async function ProfilePage() {
   if (!user) {
     redirect("/login");
   }
+
+  const subscription = await getSubscriptionAccess();
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#fbfaff] px-8 py-8 text-slate-950">
@@ -49,6 +53,9 @@ export default async function ProfilePage() {
                 <p className="mt-3 text-slate-500">
                   Gère ton compte, ton abonnement et tes informations scolaires.
                 </p>
+                {subscription.hasAccess && subscription.plan !== "none" && (
+                  <SubscriptionBadge plan={subscription.plan} className="mt-5" />
+                )}
               </div>
             </div>
 
@@ -84,14 +91,31 @@ export default async function ProfilePage() {
 
             <div className="mt-6 rounded-2xl bg-violet-50 p-5">
               <p className="text-sm font-black text-violet-700">Formule actuelle</p>
-              <p className="mt-2 text-2xl font-black">Aucun abonnement actif</p>
+              <p className="mt-2 text-2xl font-black capitalize">
+                {subscription.plan === "none" ? "Aucun abonnement" : subscription.plan}
+              </p>
               <p className="mt-3 leading-7 text-slate-600">
-                Deux formules payantes sont prévues : Standard et Premium.
+                {subscription.status === "past_due"
+                  ? "Le paiement a échoué. Mets à jour ton moyen de paiement dès que le portail sera disponible."
+                  : subscription.hasAccess
+                  ? "Ton abonnement est actif et tes outils EducationIA sont accessibles."
+                  : "Choisis une formule pour débloquer les outils EducationIA."}
               </p>
 
-              <button className="mt-5 rounded-2xl bg-violet-600 px-5 py-3 font-black text-white transition hover:bg-violet-700">
-                Choisir une formule
-              </button>
+              {subscription.plan === "none" ? (
+                <Link href="/pricing" className="mt-5 inline-flex rounded-2xl bg-violet-600 px-5 py-3 font-black text-white transition hover:bg-violet-700">
+                  Choisir une formule
+                </Link>
+              ) : (
+                <div className="mt-5">
+                  <button type="button" disabled className="cursor-not-allowed rounded-2xl bg-slate-200 px-5 py-3 font-black text-slate-500">
+                    Gérer mon abonnement
+                  </button>
+                  <p className="mt-2 text-sm font-semibold text-slate-500">
+                    Portail de gestion bientôt disponible
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 

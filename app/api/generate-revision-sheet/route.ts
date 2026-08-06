@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import { NextResponse } from "next/server";
 import { createClient } from "../../../utils/supabase/server";
+import { getSubscriptionAccess, subscriptionRequiredResponse } from "../../../lib/subscription-access";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -20,6 +21,9 @@ export async function POST(request: Request) {
         { status: 401 }
       );
     }
+
+    const subscription = await getSubscriptionAccess();
+    if (!subscription.hasAccess) return subscriptionRequiredResponse();
 
     const { summary, chapter, course } = await request.json();
     const source = course

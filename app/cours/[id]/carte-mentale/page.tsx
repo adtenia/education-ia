@@ -7,6 +7,7 @@ import MindMap, {
 } from "./MindMap";
 import styles from "./MindMap.module.css";
 import PrintButton from "./PrintButton";
+import { getSubscriptionAccess } from "../../../../lib/subscription-access";
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -124,6 +125,9 @@ export default async function MindMapPage({ params }: PageProps) {
   } = await supabase.auth.getUser();
 
   if (!user) redirect("/login");
+
+  const subscription = await getSubscriptionAccess();
+  if (!subscription.hasAccess) redirect(`/cours/${id}?subscription=required`);
 
   const { data: course } = await supabase
     .from("cours")

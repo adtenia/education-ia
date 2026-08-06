@@ -1,10 +1,14 @@
 "use client";
 
+import { useState } from "react";
+import SubscriptionRequiredDialog from "./SubscriptionRequiredDialog";
+
 type PrintButtonProps = {
   targetId: string;
   label?: string;
   className?: string;
   strategy?: "clone" | "in-place";
+  hasAccess?: boolean;
 };
 
 export default function PrintButton({
@@ -12,8 +16,16 @@ export default function PrintButton({
   label = "Imprimer / Enregistrer en PDF",
   className = "",
   strategy = "clone",
+  hasAccess = true,
 }: PrintButtonProps) {
+  const [subscriptionRequired, setSubscriptionRequired] = useState(false);
+
   function handlePrint() {
+    if (!hasAccess) {
+      setSubscriptionRequired(true);
+      return;
+    }
+
     const target = document.getElementById(targetId);
 
     if (!target) return;
@@ -55,6 +67,7 @@ export default function PrintButton({
   }
 
   return (
+    <>
     <button
       type="button"
       onClick={handlePrint}
@@ -62,5 +75,10 @@ export default function PrintButton({
     >
       {label}
     </button>
+      <SubscriptionRequiredDialog
+        open={subscriptionRequired}
+        onClose={() => setSubscriptionRequired(false)}
+      />
+    </>
   );
 }

@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import PrintButton from "../../../components/PrintButton";
+import SubscriptionRequiredDialog from "../../../components/SubscriptionRequiredDialog";
+import { getSubscriptionAccess } from "../../../lib/subscription-access";
 import { createClient } from "../../../utils/supabase/server";
 import RevisionSheetContent, {
   cleanRevisionTitle,
@@ -9,6 +11,7 @@ import { createQuiz, createRevisionSheet, deleteCours } from "./actions";
 
 type PageProps = {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ subscription?: string }>;
 };
 
 type Definition = {
@@ -99,8 +102,9 @@ function getStructuredCourse(
   }
 }
 
-export default async function CoursDetailPage({ params }: PageProps) {
+export default async function CoursDetailPage({ params, searchParams }: PageProps) {
   const { id } = await params;
+  const { subscription } = await searchParams;
   const supabase = await createClient();
 
   const {
@@ -117,6 +121,8 @@ export default async function CoursDetailPage({ params }: PageProps) {
     .single();
 
   if (!cours) redirect("/cours");
+
+  const subscriptionAccess = await getSubscriptionAccess();
 
   const { data: revisionSheets } = await supabase
     .from("revision_sheets")
@@ -142,6 +148,7 @@ export default async function CoursDetailPage({ params }: PageProps) {
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-8 sm:px-6 sm:py-12">
+      <SubscriptionRequiredDialog open={subscription === "required"} />
       <div className="mx-auto max-w-5xl">
         <div className="no-print mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <Link href="/cours" className="text-sm font-semibold text-slate-600 hover:text-slate-950">
@@ -175,7 +182,7 @@ export default async function CoursDetailPage({ params }: PageProps) {
             >
               Générer une carte mentale
             </Link>
-              <PrintButton targetId="print-course" strategy="in-place" />
+              <PrintButton targetId="print-course" strategy="in-place" hasAccess={subscriptionAccess.hasAccess} />
             </div>
           </header>
 
@@ -295,7 +302,7 @@ export default async function CoursDetailPage({ params }: PageProps) {
                   <h3 className="text-2xl font-bold text-slate-950">
                     {cleanRevisionTitle(sheet.title || "Fiche de révision")}
                   </h3>
-                    <PrintButton targetId={`print-sheet-${sheet.id}`} strategy="in-place" />
+                    <PrintButton targetId={`print-sheet-${sheet.id}`} strategy="in-place" hasAccess={subscriptionAccess.hasAccess} />
                   </header>
                   <RevisionSheetContent content={sheet.content || "Aucun contenu."} />
                 </article>

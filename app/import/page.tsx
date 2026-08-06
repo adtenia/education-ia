@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { createClient } from "../../utils/supabase/client";
+import SubscriptionRequiredDialog from "../../components/SubscriptionRequiredDialog";
 
 type Subject = {
   id: string;
@@ -115,6 +116,7 @@ export default function ImportPage() {
   const [pendingAnalysis, setPendingAnalysis] = useState<AiAnalysis | null>(null);
   const [availableSubjects, setAvailableSubjects] = useState<Subject[]>([]);
   const [chosenSubjectId, setChosenSubjectId] = useState("");
+  const [subscriptionRequired, setSubscriptionRequired] = useState(false);
 
   function resetSubjectConfirmation() {
     setNeedsSubjectConfirmation(false);
@@ -350,6 +352,12 @@ export default function ImportPage() {
 
     const aiData = await aiResponse.json();
 
+    if (aiResponse.status === 403 && aiData.code === "SUBSCRIPTION_REQUIRED") {
+      setIsLoading(false);
+      setSubscriptionRequired(true);
+      return;
+    }
+
     if (!aiData.success) {
       console.error("Erreur OpenAI :", aiData.error);
       alert("OpenAI n'a pas réussi à analyser les photos.");
@@ -427,6 +435,10 @@ export default function ImportPage() {
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-8 sm:px-6 sm:py-12">
+      <SubscriptionRequiredDialog
+        open={subscriptionRequired}
+        onClose={() => setSubscriptionRequired(false)}
+      />
       <div className="mx-auto max-w-4xl">
         <Link href="/dashboard" className="text-sm font-semibold text-purple-700">
           ← Retour au Dashboard

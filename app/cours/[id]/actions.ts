@@ -84,6 +84,9 @@ export async function createRevisionSheet(coursId: string) {
 
   if (!result.success) {
     console.error(result.error);
+    if (result.code === "SUBSCRIPTION_REQUIRED") {
+      redirect(`/cours/${coursId}?subscription=required`);
+    }
     redirect(`/cours/${coursId}`);
   }
 
@@ -152,6 +155,9 @@ export async function createQuiz(coursId: string) {
 
   if (!result.success) {
     console.error(result.error);
+    if (result.code === "SUBSCRIPTION_REQUIRED") {
+      redirect(`/cours/${coursId}?subscription=required`);
+    }
     redirect(`/cours/${coursId}`);
   }
 

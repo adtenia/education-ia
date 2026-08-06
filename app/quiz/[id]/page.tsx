@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import PrintButton from "../../../components/PrintButton";
+import { getSubscriptionAccess } from "../../../lib/subscription-access";
 import { createClient } from "../../../utils/supabase/server";
 import QuizForm from "./QuizForm";
 
@@ -27,6 +28,8 @@ export default async function QuizDetailPage({ params }: PageProps) {
 
   if (!quiz) redirect("/cours");
 
+  const subscriptionAccess = await getSubscriptionAccess();
+
   const { data: questions } = await supabase
     .from("quiz_questions")
     .select("*")
@@ -51,7 +54,7 @@ export default async function QuizDetailPage({ params }: PageProps) {
           <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600 sm:text-lg">
             Réponds à chaque question, puis valide le quiz pour découvrir ton score et la correction détaillée.
           </p>
-          <PrintButton targetId="print-quiz" label="Imprimer le quiz" className="mt-6" />
+          <PrintButton targetId="print-quiz" label="Imprimer le quiz" className="mt-6" hasAccess={subscriptionAccess.hasAccess} />
         </header>
 
         <section className="mt-8">
