@@ -135,6 +135,13 @@ export default async function DashboardPage({
 
           <div className="flex items-center gap-4">
             <Link
+              href="/progression"
+              className="rounded-xl border border-violet-200 bg-white px-4 py-3 text-sm font-black text-violet-700 shadow-sm transition hover:border-violet-300 hover:bg-violet-50 sm:px-5 sm:py-4 sm:text-base"
+            >
+              Progression
+            </Link>
+
+            <Link
               href="/import"
               className="rounded-xl bg-violet-600 px-4 py-3 text-sm font-black text-white shadow-lg shadow-violet-600/25 transition hover:-translate-y-0.5 hover:bg-violet-700 sm:px-6 sm:py-4 sm:text-base"
             >

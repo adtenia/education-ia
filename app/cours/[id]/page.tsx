@@ -7,32 +7,15 @@ import { createClient } from "../../../utils/supabase/server";
 import RevisionSheetContent, {
   cleanRevisionTitle,
 } from "./RevisionSheetContent";
+import StructuredCourseContent, {
+  type StructuredCourse,
+} from "./StructuredCourseContent";
+import SummaryContent from "./SummaryContent";
 import { createQuiz, createRevisionSheet, deleteCours } from "./actions";
 
 type PageProps = {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ subscription?: string }>;
-};
-
-type Definition = {
-  term: string;
-  definition: string;
-};
-
-type CourseSection = {
-  title: string;
-  paragraphs: string[];
-  key_points: string[];
-  definitions: Definition[];
-  examples: string[];
-};
-
-type StructuredCourse = {
-  title: string;
-  introduction: string;
-  sections: CourseSection[];
-  important_points: string[];
-  conclusion: string;
 };
 
 function asStringArray(value: unknown): string[] {
@@ -52,8 +35,9 @@ function normalizeStructuredCourse(value: unknown): StructuredCourse | null {
     .filter((section): section is Record<string, unknown> => Boolean(section) && typeof section === "object")
     .map((section) => ({
       title: typeof section.title === "string" ? section.title : "Section",
+      shortIntro: typeof section.short_intro === "string" ? section.short_intro : "",
       paragraphs: asStringArray(section.paragraphs),
-      key_points: asStringArray(section.key_points),
+      keyPoints: asStringArray(section.key_points),
       definitions: Array.isArray(section.definitions)
         ? section.definitions
             .filter((definition): definition is Record<string, unknown> => Boolean(definition) && typeof definition === "object")
@@ -64,15 +48,68 @@ function normalizeStructuredCourse(value: unknown): StructuredCourse | null {
             .filter((definition) => definition.definition)
         : [],
       examples: asStringArray(section.examples),
+      formulas: Array.isArray(section.formulas)
+        ? section.formulas.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object").map((item) => ({
+            expression: typeof item.expression === "string" ? item.expression : "",
+            explanation: typeof item.explanation === "string" ? item.explanation : "",
+          })).filter((item) => item.expression)
+        : [],
+      dates: Array.isArray(section.dates)
+        ? section.dates.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object").map((item) => ({
+            date: typeof item.date === "string" ? item.date : "",
+            event: typeof item.event === "string" ? item.event : "",
+          })).filter((item) => item.date && item.event)
+        : [],
+      commonMistakes: asStringArray(section.common_mistakes),
+      examTips: asStringArray(section.exam_tips),
     }));
 
   if (sections.length === 0) return null;
 
+  const rawOverview = source.summary_overview && typeof source.summary_overview === "object"
+    ? source.summary_overview as Record<string, unknown>
+    : null;
+  const editorialSections = rawOverview && Array.isArray(rawOverview.sections)
+    ? rawOverview.sections
+        .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object")
+        .map((item) => ({
+          title: typeof item.title === "string" ? item.title : "Partie essentielle",
+          paragraphs: asStringArray(item.paragraphs),
+          definition: typeof item.definition === "string" ? item.definition : "",
+          example: typeof item.example === "string" ? item.example : "",
+        }))
+        .filter((item) => item.paragraphs.length > 0)
+    : [];
+  const legacyIdeas = rawOverview && Array.isArray(rawOverview.essential_ideas)
+    ? rawOverview.essential_ideas
+        .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object")
+        .map((item) => ({
+          title: typeof item.title === "string" ? item.title : "Idée essentielle",
+          paragraphs: typeof item.explanation === "string" && item.explanation ? [item.explanation] : [],
+          definition: "",
+          example: typeof item.example === "string" ? item.example : "",
+        }))
+        .filter((item) => item.paragraphs.length > 0)
+    : [];
+  const overviewSections = editorialSections.length > 0 ? editorialSections : legacyIdeas;
+  const summaryOverview = rawOverview && overviewSections.length > 0
+    ? {
+        introduction: typeof rawOverview.introduction === "string"
+          ? rawOverview.introduction
+          : typeof rawOverview.hook === "string" ? rawOverview.hook : "",
+        sections: overviewSections,
+        mustRemember: asStringArray(rawOverview.must_remember).slice(0, 5),
+        commonMistakes: asStringArray(rawOverview.common_mistakes).slice(0, 5),
+        conclusion: typeof rawOverview.conclusion === "string" ? rawOverview.conclusion : "",
+      }
+    : null;
+
   return {
     title: typeof source.title === "string" ? source.title : "Cours",
     introduction: typeof source.introduction === "string" ? source.introduction : "",
+    summaryOverview,
     sections,
-    important_points: asStringArray(source.important_points),
+    importantPoints: asStringArray(source.important_points),
     conclusion: typeof source.conclusion === "string" ? source.conclusion : "",
   };
 }
@@ -187,97 +224,14 @@ export default async function CoursDetailPage({ params, searchParams }: PageProp
           </header>
 
           {structuredCourse ? (
-            <div className="px-6 py-8 sm:px-10 sm:py-12">
-              <p className="text-lg leading-8 text-slate-700 sm:text-xl sm:leading-9">
-                {structuredCourse.introduction}
-              </p>
-
-              <div className="mt-10 space-y-10">
-                {structuredCourse.sections.map((section, sectionIndex) => (
-                  <section key={`${section.title}-${sectionIndex}`} className="print-course-section border-t border-slate-200 pt-9">
-                    <div className="mb-6 flex items-start gap-4">
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white">
-                        {sectionIndex + 1}
-                      </span>
-                      <h2 className="text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">
-                        {section.title}
-                      </h2>
-                    </div>
-
-                    <div className="space-y-5 text-base leading-8 text-slate-700 sm:text-lg">
-                      {section.paragraphs.map((paragraph, paragraphIndex) => (
-                        <p key={paragraphIndex}>{paragraph}</p>
-                      ))}
-                    </div>
-
-                    {section.key_points.length > 0 && (
-                      <div className="print-keep mt-7 rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm sm:p-6">
-                        <h3 className="font-bold text-amber-950">Points importants</h3>
-                        <ul className="mt-3 space-y-2">
-                          {section.key_points.map((point, pointIndex) => (
-                            <li key={pointIndex} className="flex gap-3 leading-7 text-amber-950">
-                              <span aria-hidden="true" className="mt-3 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
-                              <span>{point}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-
-                    {section.definitions.length > 0 && (
-                      <div className="mt-7 grid gap-4 sm:grid-cols-2">
-                        {section.definitions.map((item, definitionIndex) => (
-                          <aside key={`${item.term}-${definitionIndex}`} className="rounded-2xl border border-red-100 bg-red-50/70 p-5 shadow-sm">
-                            <p className="text-sm font-bold uppercase tracking-wide text-red-700">Définition</p>
-                            <h3 className="mt-2 text-lg font-bold text-red-950">{item.term}</h3>
-                            <p className="mt-2 leading-7 text-red-950">{item.definition}</p>
-                          </aside>
-                        ))}
-                      </div>
-                    )}
-
-                    {section.examples.length > 0 && (
-                      <div className="mt-7 space-y-3">
-                        {section.examples.map((example, exampleIndex) => (
-                          <aside key={exampleIndex} className="rounded-2xl border border-blue-200 border-l-4 border-l-blue-500 bg-blue-50 p-5 text-blue-950 shadow-sm">
-                            <p className="text-sm font-bold uppercase tracking-wide text-blue-800">Exemple</p>
-                            <p className="mt-2 leading-7">{example}</p>
-                          </aside>
-                        ))}
-                      </div>
-                    )}
-                  </section>
-                ))}
+            <>
+              <SummaryContent summary={cours.summary || ""} overview={structuredCourse.summaryOverview} />
+              <div className="border-t border-slate-200">
+                <StructuredCourseContent course={structuredCourse} />
               </div>
-
-              {structuredCourse.important_points.length > 0 && (
-                <section className="print-keep mt-12 rounded-3xl border border-amber-200 bg-amber-50 p-6 text-amber-950 shadow-sm sm:p-8">
-                  <h2 className="text-2xl font-bold">L’essentiel du cours</h2>
-                  <ul className="mt-5 space-y-3">
-                    {structuredCourse.important_points.map((point, pointIndex) => (
-                      <li key={pointIndex} className="flex gap-3 leading-7 text-amber-950">
-                        <span aria-hidden="true" className="mt-3 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
-                        <span>{point}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              )}
-
-              <section className="print-course-conclusion mt-10 border-t border-slate-200 pt-9">
-                <h2 className="text-2xl font-bold text-slate-950">Conclusion</h2>
-                <p className="mt-4 text-base leading-8 text-slate-700 sm:text-lg">
-                  {structuredCourse.conclusion}
-                </p>
-              </section>
-            </div>
+            </>
           ) : (
-            <div className="px-6 py-8 sm:px-10 sm:py-10">
-              <h2 className="text-xl font-bold text-slate-950">Résumé du cours</h2>
-              <p className="mt-4 whitespace-pre-wrap text-base leading-8 text-slate-700 sm:text-lg">
-                {cours.summary || "Aucun résumé disponible."}
-              </p>
-            </div>
+            <SummaryContent summary={cours.summary || "Aucun résumé disponible."} />
           )}
         </article>
 
@@ -285,11 +239,11 @@ export default async function CoursDetailPage({ params, searchParams }: PageProp
           <div className="no-print mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-bold uppercase tracking-wider text-purple-700">Révision</p>
-              <h2 className="mt-1 text-2xl font-bold text-slate-950 sm:text-3xl">Fiches de révision</h2>
+              <h2 className="mt-1 text-2xl font-bold text-slate-950 sm:text-3xl">Carnets de révision</h2>
             </div>
             <form action={createRevisionSheetWithId}>
               <button type="submit" className="w-full rounded-xl bg-purple-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-purple-700 sm:w-auto">
-                Générer une fiche
+                Créer un carnet
               </button>
             </form>
           </div>
@@ -300,7 +254,7 @@ export default async function CoursDetailPage({ params, searchParams }: PageProp
                 <article id={`print-sheet-${sheet.id}`} key={sheet.id} className="print-document print-revision rounded-2xl border border-slate-200 bg-slate-50 p-5 sm:p-8">
                   <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <h3 className="text-2xl font-bold text-slate-950">
-                    {cleanRevisionTitle(sheet.title || "Fiche de révision")}
+                    {cleanRevisionTitle(sheet.title || "Carnet de révision")}
                   </h3>
                     <PrintButton targetId={`print-sheet-${sheet.id}`} strategy="in-place" hasAccess={subscriptionAccess.hasAccess} />
                   </header>
@@ -309,7 +263,7 @@ export default async function CoursDetailPage({ params, searchParams }: PageProp
               ))}
             </div>
           ) : (
-            <p className="text-slate-500">Aucune fiche de révision pour ce cours.</p>
+            <p className="text-slate-500">Aucun carnet de révision pour ce cours.</p>
           )}
         </section>
 

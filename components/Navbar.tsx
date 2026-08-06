@@ -31,6 +31,11 @@ export default async function Navbar() {
         </Link>
 
         <div className="hidden items-center gap-10 text-sm font-bold text-slate-700 md:flex">
+          {user && (
+            <Link href="/progression" className="transition hover:text-violet-700">
+              Progression
+            </Link>
+          )}
           <a href="#fonctionnalites" className="hover:text-violet-700">
             Fonctionnalités
           </a>

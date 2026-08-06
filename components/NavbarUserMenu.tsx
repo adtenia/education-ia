@@ -101,6 +101,14 @@ export default function NavbarUserMenu({
           >
             Mes cours
           </Link>
+          <Link
+            href="/progression"
+            role="menuitem"
+            onClick={() => setOpen(false)}
+            className="block rounded-xl px-3 py-3 text-sm font-bold text-slate-700 transition hover:bg-violet-50 hover:text-violet-700"
+          >
+            Progression
+          </Link>
           <button
             type="button"
             role="menuitem"

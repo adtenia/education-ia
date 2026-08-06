@@ -120,6 +120,21 @@ Règles impératives :
     });
 
     const result = JSON.parse(response.output_text);
+    const { error: saveError } = await supabase
+      .from("mind_maps")
+      .upsert(
+        { user_id: user.id, course_id: courseId, data: result },
+        { onConflict: "user_id,course_id" }
+      );
+
+    if (saveError) {
+      console.error("[mind-map] sauvegarde impossible", { code: saveError.code });
+      return NextResponse.json(
+        { success: false, error: "La carte a été générée mais sa sauvegarde a échoué. L’ancienne carte a été conservée." },
+        { status: 500 }
+      );
+    }
+
     await recordMindMapGenerated({ courseId });
     return NextResponse.json({ success: true, result });
   } catch (error) {

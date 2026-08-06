@@ -1,13 +1,31 @@
 "use server";
 
 import { createClient } from "../../../utils/supabase/server";
-import { recordQuizCompleted } from "../../../lib/progress-events";
+import {
+  recordQuizAttemptDetails,
+  type QuizAnswerRpcInput,
+} from "../../../lib/progress-events";
+
+type AnswerLetter = "A" | "B" | "C" | "D";
+
+export type QuizAnswerInput = {
+  questionId: string;
+  selectedAnswer: AnswerLetter;
+};
+
+export type SaveQuizResult = {
+  success: boolean;
+  score: number | null;
+  correctAnswers: number | null;
+  questionsCount: number | null;
+  error: string | null;
+};
 
 export async function saveQuizScore(
   quizId: string,
-  score: number,
-  attemptId?: string
-) {
+  answers: QuizAnswerInput[],
+  attemptId: string
+): Promise<SaveQuizResult> {
   const supabase = await createClient();
 
   const {
@@ -20,24 +38,40 @@ export async function saveQuizScore(
   }
 
   if (!user) {
-    return;
+    return { success: false, score: null, correctAnswers: null, questionsCount: null, error: "Tu dois être connecté pour valider ce quiz." };
   }
 
-  const { error: updateQuizError } = await supabase
-    .from("quiz")
-    .update({
-      score,
-    })
-    .eq("id", quizId)
-    .eq("user_id", user.id)
-    .select();
-
-  if (updateQuizError) {
-    console.error(updateQuizError);
-    return;
+  const allowedAnswers = new Set<AnswerLetter>(["A", "B", "C", "D"]);
+  if (!quizId || !attemptId || !Array.isArray(answers) || answers.length === 0) {
+    return { success: false, score: null, correctAnswers: null, questionsCount: null, error: "Les réponses envoyées sont invalides." };
   }
 
-  await recordQuizCompleted({ quizId, score, attemptId });
+  if (answers.some((answer) => !answer.questionId || !allowedAnswers.has(answer.selectedAnswer))) {
+    return { success: false, score: null, correctAnswers: null, questionsCount: null, error: "Une réponse du quiz est invalide." };
+  }
+
+  // Convention explicite à la frontière SQL : React utilise le camelCase,
+  // tandis que le RPC PostgreSQL reçoit exclusivement du snake_case.
+  const rpcAnswers: QuizAnswerRpcInput[] = answers.map((answer) => ({
+    question_id: answer.questionId,
+    selected_answer: answer.selectedAnswer,
+  }));
+
+  const attempt = await recordQuizAttemptDetails({
+    quizId,
+    attemptId,
+    answers: rpcAnswers,
+  });
+
+  if (attempt.error || attempt.score === null) {
+    return {
+      success: false,
+      score: null,
+      correctAnswers: null,
+      questionsCount: null,
+      error: attempt.error || "Le score du quiz n’a pas pu être calculé.",
+    };
+  }
 
   const { data: quiz, error: quizError } = await supabase
     .from("quiz")
@@ -50,7 +84,25 @@ export async function saveQuizScore(
   }
 
   if (!quiz?.cours_id) {
-    return;
+    return {
+      success: true,
+      score: attempt.score,
+      correctAnswers: attempt.correctAnswers,
+      questionsCount: attempt.questionsCount,
+      error: null,
+    };
+  }
+
+  // Le RPC détaillé est idempotent. Ne recompte pas la progression historique
+  // par chapitre si le navigateur rejoue exactement la même tentative.
+  if (attempt.alreadyRecorded) {
+    return {
+      success: true,
+      score: attempt.score,
+      correctAnswers: attempt.correctAnswers,
+      questionsCount: attempt.questionsCount,
+      error: null,
+    };
   }
 
   const { data: cours, error: coursError } = await supabase
@@ -67,15 +119,29 @@ export async function saveQuizScore(
     console.error(
       `Quiz ${quizId} rattaché à un cours sans chapter_id : progression par chapitre non mise à jour.`
     );
-    return;
+    return {
+      success: true,
+      score: attempt.score,
+      correctAnswers: attempt.correctAnswers,
+      questionsCount: attempt.questionsCount,
+      error: null,
+    };
   }
 
   const { error: progressError } = await supabase.rpc("record_quiz_attempt", {
     p_chapter_id: cours.chapter_id,
-    p_score: score,
+    p_score: attempt.score,
   });
 
   if (progressError) {
     console.error(progressError);
   }
+
+  return {
+    success: true,
+    score: attempt.score,
+    correctAnswers: attempt.correctAnswers,
+    questionsCount: attempt.questionsCount,
+    error: null,
+  };
 }

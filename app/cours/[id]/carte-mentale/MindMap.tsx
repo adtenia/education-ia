@@ -558,6 +558,7 @@ export default function MindMap({ courseId, initialData, fallbackTitle, fallback
   const [isMounted, setIsMounted] = useState(false);
   const [data, setData] = useState<MindMapData | null>(initialData);
   const [error, setError] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
   const [flow, setFlow] = useState<ReactFlowInstance<MindMapNode, Edge> | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const layout = useMemo(() => {
@@ -586,29 +587,62 @@ export default function MindMap({ courseId, initialData, fallbackTitle, fallback
     return () => { cancelAnimationFrame(frame); observer.disconnect(); };
   }, [flow, layout]);
 
-  useEffect(() => {
-    if (initialData || (!fallbackCourse && !fallbackSummary)) return;
-    const controller = new AbortController();
-    void fetch("/api/generate-mind-map", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ courseId, course: fallbackCourse, summary: fallbackSummary, title: fallbackTitle }),
-      signal: controller.signal,
-    }).then((response) => response.json()).then((payload) => {
-      if (!payload.success) throw new Error(payload.error || "Génération impossible");
+  async function generateMap(regenerate: boolean) {
+    if (regenerate && !window.confirm("Régénérer la carte mentale et remplacer la version sauvegardée ?")) return;
+    setIsGenerating(true);
+    setError("");
+    try {
+      const response = await fetch("/api/generate-mind-map", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ courseId, course: fallbackCourse, summary: fallbackSummary, title: fallbackTitle }),
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload.success) throw new Error(payload.error || "Génération impossible");
       setData(payload.result);
-    }).catch((requestError) => {
-      if (!controller.signal.aborted) { console.error(requestError); setError("La carte mentale n’a pas pu être générée."); }
-    });
-    return () => controller.abort();
-  }, [courseId, fallbackCourse, fallbackSummary, fallbackTitle, initialData]);
+    } catch (requestError) {
+      console.error(requestError);
+      setError(regenerate
+        ? "La nouvelle carte n’a pas pu être sauvegardée. La carte actuelle est conservée."
+        : "La carte mentale n’a pas pu être générée.");
+    } finally {
+      setIsGenerating(false);
+    }
+  }
 
-  if (!isMounted || !layout) {
-    return <div className={`${styles.interactiveMap} ${CONTAINER_CLASS} flex items-center justify-center p-8 text-center text-slate-500`}>{error || "Création de la carte mentale…"}</div>;
+  if (!isMounted) {
+    return <div className={`${styles.interactiveMap} ${CONTAINER_CLASS} flex items-center justify-center p-8 text-center text-slate-500`}>Chargement de la carte mentale…</div>;
+  }
+
+  if (!data) {
+    return (
+      <div className={`${styles.interactiveMap} ${CONTAINER_CLASS} flex items-center justify-center p-6 sm:p-10`}>
+        <div className="max-w-lg text-center">
+          <div className="mx-auto h-1.5 w-16 rounded-full bg-violet-500" />
+          <h2 className="mt-6 text-2xl font-black text-slate-950 sm:text-3xl">Créer la carte mentale du cours</h2>
+          <p className="mt-4 text-base leading-7 text-slate-600">La carte sera générée une seule fois, sauvegardée, puis disponible lors de tes prochaines visites.</p>
+          {error && <p className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-800">{error}</p>}
+          <button type="button" disabled={isGenerating || (!fallbackCourse && !fallbackSummary)} onClick={() => void generateMap(false)} className="mt-7 rounded-2xl bg-violet-600 px-6 py-3.5 text-base font-bold text-white shadow-lg shadow-violet-200 transition hover:-translate-y-0.5 hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-60">
+            {isGenerating ? "Génération en cours…" : "Générer la carte mentale"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!layout) {
+    return <div className={`${styles.interactiveMap} ${CONTAINER_CLASS} flex items-center justify-center p-8 text-center text-slate-500`}>Préparation de la carte mentale…</div>;
   }
 
   return (
     <>
+      <div className={`${styles.noPrint} mb-4 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center`}>
+        <p className="text-sm text-slate-500">Cette carte est sauvegardée et sera rechargée automatiquement.</p>
+        <button type="button" disabled={isGenerating} onClick={() => void generateMap(true)} className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:border-violet-300 hover:text-violet-700 disabled:cursor-wait disabled:opacity-60">
+          {isGenerating ? "Régénération…" : "Régénérer la carte mentale"}
+        </button>
+      </div>
+      {error && <p className={`${styles.noPrint} mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-800`}>{error}</p>}
       <div ref={containerRef} className={`${styles.interactiveMap} ${CONTAINER_CLASS}`}>
         <ReactFlow
           nodes={layout.nodes}

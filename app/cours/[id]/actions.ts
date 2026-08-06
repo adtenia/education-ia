@@ -12,6 +12,8 @@ type QuizQuestion = {
   answer_d: string;
   correct_answer: "A" | "B" | "C" | "D";
   explanation?: string;
+  topic: string;
+  topic_key: string;
 };
 
 function cleanAiJson(text: string) {
@@ -90,12 +92,18 @@ export async function createRevisionSheet(coursId: string) {
     redirect(`/cours/${coursId}`);
   }
 
-  await supabase.from("revision_sheets").insert({
+  const { error: revisionSheetError } = await supabase.from("revision_sheets").insert({
     user_id: user.id,
     cours_id: coursId,
-    title: `Fiche de révision - ${cours.detected_chapter || cours.title}`,
+    title: `Carnet de révision - ${cours.detected_chapter || cours.title}`,
     content: result.content,
   });
+
+  if (revisionSheetError) {
+    console.error("[progress] fiche non créée, événement non attendu");
+  } else {
+    console.info("[progress] fiche créée, trigger de progression exécuté");
+  }
 
   if (cours.chapter_id) {
     const { error: progressError } = await supabase.rpc(
@@ -200,6 +208,8 @@ export async function createQuiz(coursId: string) {
     answer_d: question.answer_d,
     correct_answer: question.correct_answer,
     explanation: question.explanation || null,
+    topic: question.topic || null,
+    topic_key: question.topic_key || null,
   }));
 
   const { error: questionsError } = await supabase
@@ -216,6 +226,8 @@ export async function createQuiz(coursId: string) {
         answer_c: question.answer_c,
         answer_d: question.answer_d,
         correct_answer: question.correct_answer,
+        topic: question.topic,
+        topic_key: question.topic_key,
       }))
     );
   } else if (questionsError) {

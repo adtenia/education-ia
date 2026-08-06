@@ -1,35 +1,17 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { getSubscriptionAccess } from "../../../../lib/subscription-access";
 import { createClient } from "../../../../utils/supabase/server";
-import MindMap, {
-  type MindMapBranch,
-  type MindMapData,
-} from "./MindMap";
+import MindMap, { type MindMapData } from "./MindMap";
 import styles from "./MindMap.module.css";
 import PrintButton from "./PrintButton";
-import { getSubscriptionAccess } from "../../../../lib/subscription-access";
-import { recordMindMapGenerated } from "../../../../lib/progress-events";
 
 type PageProps = {
   params: Promise<{ id: string }>;
 };
 
-type CourseSection = {
-  title?: unknown;
-  paragraphs?: unknown;
-  key_points?: unknown;
-  definitions?: unknown;
-  examples?: unknown;
-};
-
-type Definition = {
-  term?: unknown;
-  definition?: unknown;
-};
-
 function parseJson(value: unknown) {
   if (typeof value !== "string") return value;
-
   try {
     return JSON.parse(value);
   } catch {
@@ -37,94 +19,29 @@ function parseJson(value: unknown) {
   }
 }
 
-function cleanText(value: string) {
-  return value.replace(/\s+/g, " ").replace(/^[-–—•]\s*/, "").trim();
-}
-
-function useIfShort(value: unknown, maxLength: number) {
-  if (typeof value !== "string") return null;
-  const clean = cleanText(value);
-  return clean.length > 0 && clean.length <= maxLength ? clean : null;
-}
-
-function isVagueTitle(value: string) {
-  const normalized = value.toLocaleLowerCase("fr").trim();
-  return normalized === "définition" || normalized === "à retenir" || normalized.includes(" versus ");
-}
-
-function stringsFrom(value: unknown) {
-  return Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
-    : [];
-}
-
-function structuredMindMap(content: Record<string, unknown>): MindMapData | null {
-  if (
-    typeof content.title !== "string" ||
-    !Array.isArray(content.sections) ||
-    content.sections.length < 4 ||
-    content.sections.length > 7
-  ) {
-    return null;
-  }
-
-  const branches: MindMapBranch[] = [];
-
-  for (const section of content.sections as CourseSection[]) {
-    const title = useIfShort(section.title, 50);
-    const definitionEntry = Array.isArray(section.definitions)
-      ? (section.definitions as Definition[]).find((item) => typeof item?.definition === "string")
-      : undefined;
-    const definition = useIfShort(definitionEntry?.definition, 180);
-    const rule = stringsFrom(section.key_points).map((item) => useIfShort(item, 160)).find(Boolean);
-    const example = stringsFrom(section.examples).map((item) => useIfShort(item, 180)).find(Boolean);
-
-    if (!title || isVagueTitle(title) || !definition || !rule || !example) return null;
-
-    const extraPoint = stringsFrom(section.key_points)
-      .slice(1)
-      .map((item) => useIfShort(item, 160))
-      .find(Boolean);
-
-    branches.push({
-      title,
-      definition,
-      rule,
-      example,
-      children: extraPoint ? [{ title: "À savoir", content: extraPoint }] : [],
-    });
-  }
-
-  return {
-    centralTopic: cleanText(content.title),
-    branches,
-  };
-}
-
 function getStructuredContent(course: Record<string, unknown>) {
   const directContent = parseJson(course.course_content);
-  if (directContent && typeof directContent === "object") {
-    return directContent as Record<string, unknown>;
-  }
+  if (directContent && typeof directContent === "object") return directContent as Record<string, unknown>;
 
   const legacyResult = parseJson(course.result);
   if (legacyResult && typeof legacyResult === "object" && "course" in legacyResult) {
     const legacyCourse = legacyResult.course;
-    return legacyCourse && typeof legacyCourse === "object"
-      ? legacyCourse as Record<string, unknown>
-      : null;
+    return legacyCourse && typeof legacyCourse === "object" ? legacyCourse as Record<string, unknown> : null;
   }
-
   return null;
+}
+
+function savedMindMap(value: unknown): MindMapData | null {
+  if (!value || typeof value !== "object") return null;
+  const candidate = value as Record<string, unknown>;
+  if (typeof candidate.centralTopic !== "string" || !Array.isArray(candidate.branches)) return null;
+  return candidate as unknown as MindMapData;
 }
 
 export default async function MindMapPage({ params }: PageProps) {
   const { id } = await params;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
   const subscription = await getSubscriptionAccess();
@@ -136,14 +53,18 @@ export default async function MindMapPage({ params }: PageProps) {
     .eq("id", id)
     .eq("user_id", user.id)
     .single();
-
   if (!course) redirect("/cours");
 
+  const { data: persistedMap, error: persistedMapError } = await supabase
+    .from("mind_maps")
+    .select("data")
+    .eq("course_id", id)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (persistedMapError) console.error("[mind-map] chargement impossible", { code: persistedMapError.code });
+
   const content = getStructuredContent(course);
-  const initialData = content ? structuredMindMap(content) : null;
-  if (initialData) {
-    await recordMindMapGenerated({ courseId: id });
-  }
+  const initialData = savedMindMap(persistedMap?.data);
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-8 sm:px-6 sm:py-12">
@@ -154,24 +75,20 @@ export default async function MindMapPage({ params }: PageProps) {
         <header className={`${styles.noPrint} mb-7 mt-7 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between`}>
           <div>
             <p className="text-sm font-bold uppercase tracking-widest text-violet-700">Carte mentale</p>
-            <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-950 sm:text-5xl">
-              {course.title || "Carte mentale du cours"}
-            </h1>
-            <p className="mt-3 max-w-3xl text-base leading-7 text-slate-600 sm:text-lg">
-              Une vue synthétique des sections et des notions essentielles du cours.
-            </p>
+            <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-950 sm:text-5xl">{course.title || "Carte mentale du cours"}</h1>
+            <p className="mt-3 max-w-3xl text-base leading-7 text-slate-600 sm:text-lg">Une vue synthétique des sections et des notions essentielles du cours.</p>
           </div>
           <PrintButton />
         </header>
         <section className={styles.printArea}>
           <h1 className={styles.printTitle}>{course.title || "Carte mentale du cours"}</h1>
-        <MindMap
-          courseId={id}
-          initialData={initialData}
-          fallbackTitle={course.title || "Cours"}
-          fallbackSummary={course.summary || ""}
-          fallbackCourse={content}
-        />
+          <MindMap
+            courseId={id}
+            initialData={initialData}
+            fallbackTitle={course.title || "Cours"}
+            fallbackSummary={course.summary || ""}
+            fallbackCourse={content}
+          />
         </section>
       </div>
     </main>

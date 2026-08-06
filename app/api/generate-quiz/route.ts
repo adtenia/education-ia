@@ -26,6 +26,8 @@ const quizSchema = {
           answer_d: { type: "string" },
           correct_answer: { type: "string", enum: ["A", "B", "C", "D"] },
           explanation: { type: "string" },
+          topic: { type: "string" },
+          topic_key: { type: "string", pattern: "^[a-z0-9]+(_[a-z0-9]+)*$" },
         },
         required: [
           "question",
@@ -35,6 +37,8 @@ const quizSchema = {
           "answer_d",
           "correct_answer",
           "explanation",
+          "topic",
+          "topic_key",
         ],
       },
     },
@@ -86,6 +90,11 @@ Règles impératives :
 - Chaque question possède quatre réponses plausibles et une seule bonne réponse.
 - Répartis les bonnes réponses entre A, B, C et D.
 - Ajoute pour chaque question une explication pédagogique concise qui justifie la bonne réponse.
+- Associe chaque question à un topic court, précis et lisible qui nomme la compétence réellement évaluée, par exemple "Addition de fractions" ou "Reconnaître un COD".
+- Associe aussi un topic_key pédagogique stable : uniquement des minuscules sans accent, des chiffres si nécessaires et des mots séparés par des underscores.
+- Le topic_key ne contient ni article ni phrase et reste assez précis pour distinguer deux compétences, par exemple "fractions_addition", "cod_identification" ou "proportionnalite".
+- Réutilise exactement le même topic_key lorsque plusieurs questions évaluent réellement la même compétence.
+- N'utilise jamais la matière générale, le niveau scolaire ou le nom générique du chapitre comme topic.
 - N'invente aucune connaissance qui ne soit pas présente ou raisonnablement déductible de la source.
 - N'utilise aucun emoji.
 - Écris dans un français naturel, précis et adapté au niveau du cours.`,
