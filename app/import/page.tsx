@@ -434,35 +434,43 @@ export default function ImportPage() {
     : "";
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-8 sm:px-6 sm:py-12">
+    <main className="min-h-screen bg-[#fbfaff] px-4 py-8 sm:px-6 sm:py-12">
       <SubscriptionRequiredDialog
         open={subscriptionRequired}
         onClose={() => setSubscriptionRequired(false)}
       />
-      <div className="mx-auto max-w-4xl">
+      <div className="mx-auto max-w-5xl">
         <Link href="/dashboard" className="text-sm font-semibold text-purple-700">
           ← Retour au Dashboard
         </Link>
 
-        <div className="mt-8 rounded-3xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-200/60 sm:p-10">
+        <div className="mt-8 overflow-hidden rounded-[2rem] border border-violet-100 bg-white shadow-xl shadow-violet-100/60">
+          <div className="bg-gradient-to-br from-violet-100 via-white to-indigo-50 px-6 py-9 sm:px-10">
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-violet-700">Bibliothèque · Nouveau cours</p>
           <h1 className="text-3xl font-black tracking-tight text-slate-950 sm:text-5xl">
 
-            Importer un cours
+            Tes cours, en quelques photos.
           </h1>
 
           <p className="mt-3 text-lg text-slate-600">
-            Choisis jusqu’à {MAX_IMAGES} photos du même cours. L’IA va les lire
-            ensemble.
+            Prends tes pages en photo ou envoie-les depuis ton téléphone. L’IA retrouve la matière et le chapitre pour créer ton cours.
           </p>
 
-          <div className="mt-10 rounded-3xl border-2 border-dashed border-violet-200 bg-violet-50/40 p-5 text-center sm:p-10">
+          </div>
+          <div className="grid gap-3 px-6 pt-6 text-sm sm:grid-cols-3 sm:px-10">
+            <div className="rounded-2xl bg-violet-50 p-4"><span className="font-black text-violet-700">01 · Ajouter</span><p className="mt-1 text-slate-600">Jusqu'à {MAX_IMAGES} photos du même cours</p></div>
+            <div className="rounded-2xl bg-indigo-50 p-4"><span className="font-black text-indigo-700">02 · Vérifier</span><p className="mt-1 text-slate-600">Relire les pages et la matière détectée</p></div>
+            <div className="rounded-2xl bg-emerald-50 p-4"><span className="font-black text-emerald-700">03 · Réviser</span><p className="mt-1 text-slate-600">Retrouver le cours dans ta bibliothèque</p></div>
+          </div>
+          <div className="m-6 rounded-3xl border-2 border-dashed border-violet-200 bg-violet-50/40 p-5 text-center sm:m-10 sm:p-10">
             <h2 className="text-2xl font-bold text-slate-800">
-              Ajoute tes photos de cours
+              Comment veux-tu ajouter ton cours ?
             </h2>
 
-            <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
-              <label className="inline-block cursor-pointer rounded-2xl bg-purple-600 px-8 py-4 text-lg font-semibold text-white hover:bg-purple-700">
-                Choisir des photos
+            <p className="mt-2 text-sm text-slate-500">Photos nettes, pages dans l'ordre, sans ombres si possible.</p>
+            <div className="mt-8 grid gap-4 sm:grid-cols-2">
+              <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl bg-violet-600 px-6 py-6 text-lg font-semibold text-white shadow-lg shadow-violet-200 hover:bg-violet-700">
+                📷 Choisir des photos
                 <input
                   type="file"
                   accept="image/png,image/jpeg,image/jpg"
@@ -474,9 +482,9 @@ export default function ImportPage() {
 
               <button
                 onClick={handleCreateQrSession}
-                className="rounded-2xl bg-slate-900 px-8 py-4 text-lg font-semibold text-white hover:bg-slate-800"
+                className="rounded-2xl bg-slate-900 px-6 py-6 text-lg font-semibold text-white hover:bg-slate-800"
               >
-                Générer un QR Code
+                📱 Transférer depuis mon téléphone (QR code)
               </button>
             </div>
 
@@ -507,9 +515,13 @@ export default function ImportPage() {
             )}
 
             {selectedFiles.length > 0 && (
-              <div className="mt-8 rounded-3xl bg-white p-6 shadow">
+              <div className="mt-8 rounded-3xl bg-white p-6 text-left shadow">
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                  <span className="rounded-full bg-violet-100 px-4 py-2 text-sm font-black text-violet-700">Étape 2 · Vérification</span>
+                  <button type="button" onClick={() => { setSelectedFiles([]); setImagePreviews([]); resetSubjectConfirmation(); }} className="text-sm font-bold text-slate-600 underline">Effacer la sélection</button>
+                </div>
                 <p className="font-semibold text-slate-700">
-                  {selectedFiles.length} photo(s) sélectionnée(s)
+                  {selectedFiles.length} photo(s) prête(s) · {MAX_IMAGES - selectedFiles.length} emplacement(s) restant(s)
                 </p>
 
                 <p className="mt-4 rounded-2xl bg-purple-50 px-4 py-3 font-semibold text-purple-700">
