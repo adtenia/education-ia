@@ -154,6 +154,34 @@ export default async function DashboardPage({
           </div>
         </header>
 
+        <nav aria-label="Accès rapide" className="mt-8 rounded-[2rem] border border-violet-100 bg-white/90 p-5 shadow-sm sm:p-6">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-lg font-black text-slate-900">Accès rapide</h2>
+            <span className="text-xs font-semibold text-slate-500">Retrouve tes espaces en un clic</span>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              { href: "/import", label: "Importer un cours", detail: "Ajouter un nouveau support", icon: "＋" },
+              { href: "/cours", label: "Mes cours", detail: "Retrouver mes matières", icon: "▤" },
+              { href: "/progression", label: "Ma progression", detail: "Suivre mes résultats", icon: "↗" },
+              { href: "/profile", label: "Mon profil", detail: "Gérer mon compte", icon: "◉" },
+            ].map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="group flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 transition hover:-translate-y-0.5 hover:border-violet-300 hover:bg-violet-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600"
+              >
+                <span aria-hidden="true" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-xl font-black text-violet-700 shadow-sm">{item.icon}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-black text-slate-900">{item.label}</span>
+                  <span className="block text-xs text-slate-500">{item.detail}</span>
+                </span>
+                <span aria-hidden="true" className="text-violet-500 transition group-hover:translate-x-1">→</span>
+              </Link>
+            ))}
+          </div>
+        </nav>
+
         <section className="mt-10 grid gap-5 md:grid-cols-3">
           <div className="rounded-[2rem] border border-violet-100 bg-white/85 p-6 shadow-sm">
             <p className="text-sm font-bold text-slate-500">
