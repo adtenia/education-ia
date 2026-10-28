@@ -142,9 +142,44 @@ export async function POST(request: Request) {
       p_replace_subscription: true,
     });
     if (syncError) {
-      console.error("[checkout-session] activation Supabase impossible", syncError.message);
-      // Stripe has confirmed the payment. Do not suppress the celebration:
-      // the webhook may still complete the subscription sync asynchronously.
+      console.error("[checkout-session] RPC activation Supabase impossible", syncError.message);
+    }
+
+    // Confirm the stored tier, not merely that the RPC returned no error.
+    // A verified, paid Stripe checkout is authoritative for this user.
+    const { data: stored, error: readError } = await admin
+      .from("user_subscriptions")
+      .select("plan, subscription_status, stripe_subscription_id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (readError) {
+      console.error("[checkout-session] lecture abonnement impossible", readError.message);
+      return json({ error: "Paiement confirmé, synchronisation de l'abonnement impossible." }, 503);
+    }
+    if (
+      stored?.plan !== plan ||
+      stored?.stripe_subscription_id !== subscription.id ||
+      !["active", "trialing"].includes(stored?.subscription_status || "")
+    ) {
+      // Recover when the older RPC refuses to replace a previous subscription.
+      // Never trust a client-supplied tier: all values came from Stripe.
+      const { error: writeError } = await admin
+        .from("user_subscriptions")
+        .upsert({
+          user_id: user.id,
+          plan,
+          subscription_status: subscription.status,
+          stripe_customer_id: typeof subscription.customer === "string"
+            ? subscription.customer : subscription.customer?.id || null,
+          stripe_subscription_id: subscription.id,
+          current_period_end: Number.isFinite(currentPeriodEnd)
+            ? new Date(currentPeriodEnd * 1000).toISOString() : null,
+          cancel_at_period_end: subscription.cancel_at_period_end,
+        }, { onConflict: "user_id" });
+      if (writeError) {
+        console.error("[checkout-session] remplacement abonnement impossible", writeError.message);
+        return json({ error: "Paiement confirmé, mise à jour de l'abonnement impossible." }, 503);
+      }
     }
 
     if (!animationUsedBy) {
