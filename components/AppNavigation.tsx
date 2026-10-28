@@ -8,12 +8,13 @@ const links = [
   { href: "/cours", label: "Mes cours", symbol: "▤" },
   { href: "/import", label: "Importer", symbol: "＋" },
   { href: "/progression", label: "Progression", symbol: "↗" },
+  { href: "/preparer-controle", label: "Mon contrôle", symbol: "✓" },
   { href: "/profile", label: "Profil", symbol: "◉" },
 ];
 
 export default function AppNavigation() {
   const pathname = usePathname();
-  const insideApp = ["/dashboard", "/cours", "/import", "/progression", "/profile", "/quiz", "/revisions", "/test"].some(
+  const insideApp = ["/dashboard", "/cours", "/import", "/progression", "/profile", "/quiz", "/revisions", "/test", "/preparer-controle"].some(
     (route) => pathname === route || pathname.startsWith(route + "/")
   );
   if (!insideApp) return null;
