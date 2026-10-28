@@ -215,8 +215,8 @@ export default function Home() {
             </h2>
 
             <p className="mx-auto mt-5 max-w-2xl text-center text-lg leading-8 text-slate-600">
-              Choisis la formule adaptée à tes révisions. Standard est disponible
-              dès maintenant en environnement de test.
+              Choisis la formule adaptée à tes révisions. Les trois formules
+              sont disponibles en environnement de test.
             </p>
 
             <div className="mt-14 grid gap-8 md:grid-cols-3">
@@ -255,7 +255,7 @@ export default function Home() {
 
               <div className="relative rounded-[2rem] border-2 border-violet-600 bg-white p-10 shadow-xl shadow-violet-600/10">
                 <div className="absolute right-8 top-8 rounded-full bg-violet-600 px-4 py-2 text-sm font-black text-white">
-                  Bientôt disponible
+                  Disponible
                 </div>
 
                 <h3 className="text-3xl font-black">Premium</h3>
@@ -281,18 +281,12 @@ export default function Home() {
                   <li>Cahier de vacances personnalisé</li>
                 </ul>
 
-                <button
-                  type="button"
-                  disabled
-                  className="mt-10 inline-block cursor-not-allowed rounded-2xl bg-violet-600 px-8 py-4 font-black text-white opacity-60 shadow-lg shadow-violet-600/25 transition"
-                >
-                  Bientôt disponible
-                </button>
+                <SubscribeButton plan="premium" returnTo="/" text="Choisir Premium" className="mt-10 inline-block rounded-2xl bg-violet-600 px-8 py-4 font-black text-white shadow-lg shadow-violet-600/25 transition hover:bg-violet-700" />
               </div>
 
               <div className="rounded-[2rem] border border-slate-200 bg-white p-10 shadow-sm">
-                <div className="inline-flex rounded-full bg-slate-100 px-4 py-2 text-sm font-black text-slate-600">
-                  Bientôt disponible
+                <div className="inline-flex rounded-full bg-emerald-100 px-4 py-2 text-sm font-black text-emerald-700">
+                  Disponible
                 </div>
 
                 <h3 className="mt-5 text-3xl font-black">Pro</h3>
@@ -317,13 +311,7 @@ export default function Home() {
                   <li>Outils IA exclusifs</li>
                 </ul>
 
-                <button
-                  type="button"
-                  disabled
-                  className="mt-10 inline-block cursor-not-allowed rounded-2xl bg-slate-950 px-8 py-4 font-black text-white opacity-50 transition"
-                >
-                  Bientôt disponible
-                </button>
+                <SubscribeButton plan="pro" returnTo="/" text="Choisir Pro" className="mt-10 inline-block rounded-2xl bg-slate-950 px-8 py-4 font-black text-white transition hover:bg-slate-800" />
               </div>
             </div>
           </div>
