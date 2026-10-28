@@ -3,200 +3,164 @@ import { redirect } from "next/navigation";
 import LogoutButton from "../../components/LogoutButton";
 import ProfileAvatar from "../../components/ProfileAvatar";
 import SubscriptionBadge from "../../components/SubscriptionBadge";
-import ResetSubscriptionAnimationButton from "../../components/ResetSubscriptionAnimationButton";
 import { getSubscriptionAccess } from "../../lib/subscription-access";
 import { createClient } from "../../utils/supabase/server";
 
+export const dynamic = "force-dynamic";
+
 export default async function ProfilePage() {
   const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login?redirect=/profile");
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login");
-  }
-
-  const [statsResult, progressResult] = await Promise.all([
-    supabase.from("user_progress_stats").select("total_courses, total_quizzes, total_revision_sheets").eq("user_id", user.id).maybeSingle(),
+  const [statsResult, progressResult, subscription] = await Promise.all([
+    supabase.from("user_progress_stats")
+      .select("total_courses, total_quizzes, total_revision_sheets")
+      .eq("user_id", user.id).maybeSingle(),
     supabase.from("progress").select("mastery_percent").eq("user_id", user.id),
+    getSubscriptionAccess(),
   ]);
-  const stats = statsResult.data;
-  const values = (progressResult.data ?? []).map((row) => Number(row.mastery_percent)).filter(Number.isFinite);
-  const average = values.length ? Math.round(values.reduce((a, b) => a + b, 0) / values.length) : null;
 
-  const subscription = await getSubscriptionAccess();
-  const stripeTestMode =
-    process.env.NODE_ENV === "development" ||
-    Boolean(process.env.STRIPE_SECRET_KEY?.startsWith("sk_test_"));
+  const stats = statsResult.data;
+  const masteryValues = (progressResult.data ?? [])
+    .map((row) => Number(row.mastery_percent))
+    .filter(Number.isFinite);
+  const mastery = masteryValues.length
+    ? Math.round(masteryValues.reduce((total, value) => total + value, 0) / masteryValues.length)
+    : null;
+  const firstName = typeof user.user_metadata?.full_name === "string"
+    ? user.user_metadata.full_name
+    : typeof user.user_metadata?.name === "string"
+      ? user.user_metadata.name
+      : null;
+
+  const metrics = [
+    { label: "Cours importés", value: stats?.total_courses ?? "—", hint: "Supports ajoutés" },
+    { label: "Quiz réalisés", value: stats?.total_quizzes ?? "—", hint: "Entraînements terminés" },
+    { label: "Fiches créées", value: stats?.total_revision_sheets ?? "—", hint: "Fiches de révision" },
+    { label: "Maîtrise moyenne", value: mastery === null ? "—" : `${mastery}%`, hint: "Sur les chapitres évalués" },
+  ];
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#fbfaff] px-8 py-8 text-slate-950">
-      <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_15%_10%,rgba(139,92,246,0.18),transparent_32%),radial-gradient(circle_at_85%_0%,rgba(99,102,241,0.13),transparent_30%),linear-gradient(180deg,#ffffff,#faf7ff)]" />
-
-      <div className="mx-auto max-w-7xl">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <Link
-            href="/dashboard"
-            className="rounded-2xl border border-violet-100 bg-white px-6 py-3 font-black text-violet-700 shadow-sm transition hover:border-violet-300"
-          >
-            ← Retour au Dashboard
-            </Link>
-            <Link href="/" className="rounded-2xl border border-slate-200 bg-white px-6 py-3 font-black text-slate-700 shadow-sm transition hover:border-violet-300 hover:text-violet-700">⌂ Accueil du site</Link>
+    <main className="relative min-h-screen bg-[#fbfaff] px-4 pb-16 pt-8 text-slate-950 sm:px-6 sm:pt-10">
+      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-96 bg-[radial-gradient(circle_at_15%_0%,rgba(139,92,246,0.15),transparent_50%),radial-gradient(circle_at_85%_0%,rgba(59,130,246,0.09),transparent_45%)]" />
+      <div className="mx-auto max-w-6xl space-y-7">
+        <header className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-violet-600">Espace élève / Compte</p>
+            <h1 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">Mon profil</h1>
+            <p className="mt-2 text-sm text-slate-500">Tes informations et ton parcours, au même endroit.</p>
           </div>
-
-          <Link
-            href="/import"
-            className="rounded-2xl bg-violet-600 px-6 py-4 font-black text-white shadow-lg shadow-violet-600/25 transition hover:bg-violet-700"
-          >
-            + Importer un cours
+          <Link href="/dashboard" className="inline-flex items-center rounded-xl border border-violet-200 bg-white px-4 py-3 text-sm font-bold text-violet-700 shadow-sm transition hover:border-violet-400 hover:bg-violet-50 focus-visible:outline-2 focus-visible:outline-violet-600">
+            ← Tableau de bord
           </Link>
+        </header>
+
+        <section aria-label="Identité du compte" className="relative overflow-hidden rounded-[2rem] border border-violet-100 bg-white p-6 shadow-lg shadow-violet-100/50 sm:p-8">
+          <div aria-hidden="true" className="absolute right-0 top-0 h-40 w-40 rounded-full bg-violet-100/50 blur-3xl" />
+          <div className="relative flex flex-col gap-6 sm:flex-row sm:items-center">
+            <ProfileAvatar email={user.email} size="large" />
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-violet-600">Compte personnel</p>
+              <h2 className="mt-2 break-words text-2xl font-black tracking-tight sm:text-3xl">
+                {firstName || "Bienvenue sur Éducation IA"}
+              </h2>
+              <p className="mt-2 break-all text-sm text-slate-500">{user.email || "Adresse e-mail indisponible"}</p>
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-black text-emerald-700">● Connecté</span>
+                {subscription.hasAccess && subscription.plan !== "none" && <SubscriptionBadge plan={subscription.plan} />}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div className="grid gap-6 lg:grid-cols-[1fr_1fr]">
+          <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+            <h2 className="text-xl font-black">Informations du compte</h2>
+            <p className="mt-1 text-sm text-slate-500">Les informations associées à ta connexion.</p>
+            <dl className="mt-6 space-y-3">
+              <div className="rounded-2xl bg-slate-50 p-4">
+                <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">Adresse e-mail</dt>
+                <dd className="mt-2 break-all font-bold text-slate-900">{user.email || "Non renseignée"}</dd>
+              </div>
+              <div className="rounded-2xl bg-slate-50 p-4">
+                <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">Statut</dt>
+                <dd className="mt-2 font-bold text-emerald-700">Session active</dd>
+              </div>
+            </dl>
+          </section>
+
+          <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-xl font-black">Mon abonnement</h2>
+              <span className="rounded-full bg-violet-50 px-3 py-1.5 text-xs font-black text-violet-700">
+                {subscription.plan === "none" ? "Sans formule" : subscription.plan}
+              </span>
+            </div>
+            <div className="mt-6 rounded-2xl bg-gradient-to-br from-violet-50 to-indigo-50 p-5">
+              <p className="text-xs font-bold uppercase tracking-wide text-violet-700">Formule actuelle</p>
+              <p className="mt-2 text-2xl font-black capitalize">{subscription.plan === "none" ? "Aucun abonnement" : subscription.plan}</p>
+              <p className="mt-3 text-sm leading-6 text-slate-600">
+                {subscription.status === "past_due"
+                  ? "Un paiement nécessite ton attention. La gestion de facturation n'est pas encore disponible depuis cette page."
+                  : subscription.hasAccess
+                    ? "Ta formule donne accès aux outils inclus dans ton abonnement."
+                    : "Découvre les formules disponibles pour accéder aux outils."}
+              </p>
+              <Link href="/pricing" className="mt-5 inline-flex rounded-xl bg-violet-600 px-5 py-3 text-sm font-black text-white transition hover:bg-violet-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600">
+                {subscription.plan === "none" ? "Découvrir les formules →" : "Voir les formules →"}
+              </Link>
+            </div>
+          </section>
         </div>
 
-        <section className="mt-8 rounded-[2rem] border border-violet-100 bg-white/90 p-10 shadow-xl shadow-violet-100/60">
-          <div className="flex items-center justify-between gap-8">
-            <div className="flex items-center gap-8">
-              <ProfileAvatar email={user.email} size="large" />
-
-              <div>
-                <p className="text-sm font-black uppercase tracking-[0.25em] text-violet-600">
-                  Profil élève
-                </p>
-                <h1 className="mt-2 text-5xl font-black">Mon profil</h1>
-                <p className="mt-3 text-slate-500">
-                  Gère ton compte, ton abonnement et tes informations scolaires.
-                </p>
-                {subscription.hasAccess && subscription.plan !== "none" && (
-                  <SubscriptionBadge plan={subscription.plan} className="mt-5" />
-                )}
+        <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-black">Mon parcours en chiffres</h2>
+              <p className="mt-1 text-sm text-slate-500">Les données disponibles de ton apprentissage.</p>
+            </div>
+            <Link href="/progression" className="text-sm font-black text-violet-700 hover:underline">Voir ma progression →</Link>
+          </div>
+          <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
+            {metrics.map((metric) => (
+              <div key={metric.label} className="rounded-2xl border border-violet-50 bg-slate-50 p-4 sm:p-5">
+                <p className="text-xs font-bold text-slate-500">{metric.label}</p>
+                <p className="mt-3 text-3xl font-black tracking-tight text-violet-700">{metric.value}</p>
+                <p className="mt-2 text-xs leading-5 text-slate-500">{metric.hint}</p>
               </div>
-            </div>
+            ))}
+          </div>
+          <p className="mt-4 text-xs text-slate-500">« — » signifie qu'aucune donnée exploitable n'est disponible pour cet indicateur.</p>
+        </section>
 
-            <div className="hidden text-right md:block">
-              <p className="text-sm font-black text-violet-600">Utilisateur connecté</p>
-              <p className="mt-2 font-bold text-slate-900">{user.email}</p>
-              <p className="mt-3 text-sm font-bold text-emerald-600">Compte actif</p>
-            </div>
+        <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+          <h2 className="text-xl font-black">Continuer à apprendre</h2>
+          <p className="mt-1 text-sm text-slate-500">Retrouve rapidement tes espaces de travail.</p>
+          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            {[
+              { href: "/dashboard", title: "Tableau de bord", subtitle: "Reprendre mes révisions" },
+              { href: "/cours", title: "Mes cours", subtitle: "Retrouver mes chapitres" },
+              { href: "/import", title: "Importer un cours", subtitle: "Ajouter un nouveau support" },
+            ].map((item) => (
+              <Link key={item.href} href={item.href} className="group rounded-2xl border border-slate-200 bg-slate-50 p-5 transition hover:-translate-y-0.5 hover:border-violet-300 hover:bg-violet-50 focus-visible:outline-2 focus-visible:outline-violet-600">
+                <span className="block font-black text-slate-900">{item.title} <span aria-hidden="true" className="text-violet-600 transition group-hover:translate-x-1">→</span></span>
+                <span className="mt-1 block text-xs text-slate-500">{item.subtitle}</span>
+              </Link>
+            ))}
           </div>
         </section>
 
-        <section className="mt-8 grid gap-6 md:grid-cols-2">
-          <div className="rounded-[2rem] border border-slate-200 bg-white p-7 shadow-sm">
-            <h2 className="text-2xl font-black">Informations du compte</h2>
-
-            <div className="mt-6 space-y-4">
-              <div className="flex items-center justify-between rounded-2xl bg-slate-50 p-5">
-                <span className="font-bold text-slate-500">Email</span>
-                <span className="break-all font-black text-slate-900">{user.email}</span>
-              </div>
-
-              <div className="flex items-center justify-between rounded-2xl bg-slate-50 p-5">
-                <span className="font-bold text-slate-500">Statut</span>
-                <span className="rounded-full bg-emerald-100 px-4 py-2 font-black text-emerald-700">
-                  Compte connecté
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-[2rem] border border-slate-200 bg-white p-7 shadow-sm">
-            <h2 className="text-2xl font-black">Abonnement</h2>
-
-            <div className="mt-6 rounded-2xl bg-violet-50 p-5">
-              <p className="text-sm font-black text-violet-700">Formule actuelle</p>
-              <p className="mt-2 text-2xl font-black capitalize">
-                {subscription.plan === "none" ? "Aucun abonnement" : subscription.plan}
-              </p>
-              <p className="mt-3 leading-7 text-slate-600">
-                {subscription.status === "past_due"
-                  ? "Le paiement a échoué. Mets à jour ton moyen de paiement dès que le portail sera disponible."
-                  : subscription.hasAccess
-                  ? "Ton abonnement est actif et tes outils EducationIA sont accessibles."
-                  : "Choisis une formule pour débloquer les outils EducationIA."}
-              </p>
-
-              {subscription.plan === "none" ? (
-                <Link href="/pricing" className="mt-5 inline-flex rounded-2xl bg-violet-600 px-5 py-3 font-black text-white transition hover:bg-violet-700">
-                  Choisir une formule
-                </Link>
-              ) : (
-                <div className="mt-5">
-                  <Link href="/profile" className="inline-flex rounded-2xl bg-violet-600 px-5 py-3 font-black text-white transition hover:bg-violet-700">
-                    Mon abonnement
-                  </Link>
-                  <p className="mt-2 text-sm font-semibold text-slate-500">
-                    Portail de gestion bientôt disponible
-                  </p>
-                  {stripeTestMode && subscription.planUnlockedAt && (
-                      <ResetSubscriptionAnimationButton
-                        userId={user.id}
-                        plan={subscription.plan}
-                        planUnlockedAt={subscription.planUnlockedAt}
-                        subscriptionId={subscription.stripeSubscriptionId}
-                      />
-                    )}
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="rounded-[2rem] border border-slate-200 bg-white p-7 shadow-sm">
-            <h2 className="text-2xl font-black">Informations scolaires</h2>
-
-            <div className="mt-6 space-y-4">
-              <div className="flex items-center justify-between rounded-2xl bg-slate-50 p-5">
-                <span className="font-bold text-slate-500">Classe</span>
-                <span className="font-black text-violet-700">À compléter</span>
-              </div>
-
-              <div className="flex items-center justify-between rounded-2xl bg-slate-50 p-5">
-                <span className="font-bold text-slate-500">Objectif</span>
-                <span className="font-black">Progresser chapitre par chapitre</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-[2rem] border border-slate-200 bg-white p-7 shadow-sm">
-            <h2 className="text-2xl font-black">Progression</h2>
-
-            <div className="mt-6 grid grid-cols-2 gap-4">
-              {[
-                { label: "Cours importés", value: stats?.total_courses ?? "—" },
-                { label: "Quiz réalisés", value: stats?.total_quizzes ?? "—" },
-                { label: "Fiches créées", value: stats?.total_revision_sheets ?? "—" },
-                { label: "Progression", value: average === null ? "—" : String(average) + "%" },
-              ].map((item) => (
-                <div key={item.label} className="rounded-2xl bg-slate-50 p-5 text-center">
-                  <p className="text-sm font-bold text-slate-500">{item.label}</p>
-                  <p className="mt-2 text-3xl font-black text-violet-700">{item.value}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="mt-8 rounded-[2rem] border border-slate-200 bg-white p-7 shadow-sm">
-          <h2 className="text-2xl font-black">Raccourcis du compte</h2>
-          <p className="mt-2 text-sm text-slate-500">Les réglages non disponibles ne sont plus présentés comme des boutons actifs.</p>
-          <div className="mt-6 grid gap-4 sm:grid-cols-3">
-            <Link href="/dashboard" className="rounded-2xl bg-violet-50 p-5 font-black text-violet-700 hover:bg-violet-100">Tableau de bord →</Link>
-            <Link href="/progression" className="rounded-2xl bg-slate-50 p-5 font-black text-slate-700 hover:bg-violet-50">Ma progression →</Link>
-            <Link href="/" className="rounded-2xl bg-slate-50 p-5 font-black text-slate-700 hover:bg-violet-50">Accueil du site →</Link>
-          </div>
-        </section>
-
-        <section className="mt-8 flex items-center justify-between rounded-[2rem] border border-red-100 bg-white p-7 shadow-sm">
+        <section className="flex flex-col gap-5 rounded-[2rem] border border-rose-100 bg-white p-6 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-8">
           <div>
-            <h2 className="text-2xl font-black text-red-700">Zone de compte</h2>
-            <p className="mt-2 text-slate-500">
-              Tu peux quitter ta session depuis cette section.
-            </p>
+            <h2 className="text-xl font-black text-slate-900">Se déconnecter</h2>
+            <p className="mt-1 text-sm text-slate-500">Terminer cette session sur cet appareil. Tes cours restent enregistrés.</p>
           </div>
-
           <LogoutButton />
         </section>
+        <footer className="pb-2 text-center">
+          <Link href="/" className="text-sm font-bold text-slate-500 transition hover:text-violet-700">← Retour à l'accueil d'Éducation IA</Link>
+        </footer>
       </div>
     </main>
   );
