@@ -19,7 +19,8 @@ type SubscriptionStatus = {
   stripe_subscription_id?: string | null;
 };
 
-const POLLING_INTERVAL_MS = 750;
+const POLLING_INTERVAL_MS = 1_000;
+const ACTIVATION_TIMEOUT_MS = 30_000;
 
 function isActivePlan(plan: unknown): plan is ActiveSubscriptionPlan {
   return plan === "standard" || plan === "premium" || plan === "pro";
@@ -58,13 +59,11 @@ export default function SubscriptionUnlockNotice() {
     const controller = new AbortController();
     let pollTimer: ReturnType<typeof setTimeout> | undefined;
     let stopped = false;
+    const startedAt = Date.now();
 
     setActivationPending(true);
     if (animationAlreadySeen) {
       window.sessionStorage.removeItem(SUBSCRIPTION_UNLOCK_PENDING_KEY);
-    } else {
-      markerToSave.current = animationMarker;
-      setActivePlan(activationPlan);
     }
 
     async function checkSubscription() {
@@ -89,6 +88,10 @@ export default function SubscriptionUnlockNotice() {
         if (confirmed) {
           stopped = true;
           setActivationPending(false);
+          if (!animationAlreadySeen) {
+            markerToSave.current = animationMarker;
+            setActivePlan(activationPlan);
+          }
           window.dispatchEvent(
             new CustomEvent("educationia:subscription-updated", { detail: subscription })
           );
@@ -103,6 +106,11 @@ export default function SubscriptionUnlockNotice() {
       }
 
       if (!stopped && !controller.signal.aborted) {
+        if (Date.now() - startedAt >= ACTIVATION_TIMEOUT_MS) {
+          stopped = true;
+          setActivationPending(false);
+          return;
+        }
         pollTimer = setTimeout(() => void checkSubscription(), POLLING_INTERVAL_MS);
       }
     }
@@ -123,7 +131,7 @@ export default function SubscriptionUnlockNotice() {
           role="status"
           className="pointer-events-none fixed bottom-5 right-5 z-[110] max-w-[calc(100vw-2.5rem)] rounded-2xl border border-sky-200 bg-white/95 px-5 py-3 text-sm font-bold text-slate-700 shadow-xl shadow-sky-100/70 backdrop-blur"
         >
-          Ton abonnement est en cours d&apos;activation.
+          Vérification de ton nouvel abonnement en cours…
         </div>
       )}
 
