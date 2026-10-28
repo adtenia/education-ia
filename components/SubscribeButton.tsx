@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 type SubscribeButtonProps = {
-  plan: "standard";
+  plan: "standard" | "premium" | "pro";
   returnTo?: string;
   text: string;
   className?: string;

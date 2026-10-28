@@ -61,10 +61,19 @@ export async function POST(request: Request) {
       );
     }
 
+    const allowedClasses = ["6e", "5e", "4e", "3e", "Seconde", "Première", "Terminale"];
+    const storedClass = user.user_metadata?.school_class;
+    const schoolClass = typeof storedClass === "string" && allowedClasses.includes(storedClass)
+      ? storedClass
+      : null;
+
     const subscription = await getSubscriptionAccess();
     if (!subscription.hasAccess) return subscriptionRequiredResponse();
 
-    const { summary, chapter, course } = await request.json();
+    const { summary, chapter, course, difficulty } = await request.json();
+    const difficultyLabel = difficulty === "facile" ? "accessible, avec des questions directes et pédagogiques"
+      : difficulty === "avance" ? "exigeant, avec davantage d'application et de raisonnement"
+      : "équilibré, avec compréhension et application";
     const source = course
       ? `Cours structuré :\n${JSON.stringify(course, null, 2)}`
       : `Résumé disponible :\n${summary || "Aucun contenu détaillé disponible."}`;
@@ -97,11 +106,11 @@ Règles impératives :
 - N'utilise jamais la matière générale, le niveau scolaire ou le nom générique du chapitre comme topic.
 - N'invente aucune connaissance qui ne soit pas présente ou raisonnablement déductible de la source.
 - N'utilise aucun emoji.
-- Écris dans un français naturel, précis et adapté au niveau du cours.`,
+- Écris dans un français naturel, précis et adapté au niveau du cours.\n- Si une classe est fournie, ajuste le vocabulaire, la complexité et les distracteurs à cette classe, mais ne change jamais le sujet ni les faits du cours source.\n- Ne produis pas de question sans rapport avec le chapitre et le contenu fournis.`,
         },
         {
           role: "user",
-          content: `Crée le quiz pour le chapitre suivant :
+          content: `Niveau scolaire enregistré : ${schoolClass || "Non renseigné (déduire uniquement du cours)"}\nDifficulté souhaitée : ${difficultyLabel}\n\nCrée le quiz pour le chapitre suivant :
 
 ${chapter || "Chapitre non renseigné"}
 

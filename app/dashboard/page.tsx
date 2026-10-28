@@ -66,6 +66,7 @@ export default async function DashboardPage({
 
   let chapters: ChapterWithProgress[] = [];
   let masteryPercent = 0;
+  let hasProgress = false;
 
   if (selectedSubjectRecord) {
     const { data: subjectChapters } = await supabase
@@ -88,6 +89,7 @@ export default async function DashboardPage({
       .maybeSingle();
 
     masteryPercent = progress?.mastery_percent ?? 0;
+    hasProgress = progress?.mastery_percent != null;
 
     const chapterIds = (subjectChapters ?? []).map((chapter) => chapter.id);
 
@@ -118,6 +120,21 @@ export default async function DashboardPage({
       })
       .filter((chapter) => chapter.courseCount > 0);
   }
+
+  const { data: priorityRows } = await supabase.from("user_topic_progress")
+    .select("topic_key, topic, success_rate, answered_questions, learning_status")
+    .eq("user_id", user.id)
+    .eq("learning_status", "needs_review")
+    .order("success_rate", { ascending: true })
+    .limit(3);
+  const priorities = (priorityRows ?? []).filter(row => Number(row.answered_questions) >= 3);
+  const { data: recentCourses } = await supabase.from("cours")
+    .select("id, title, detected_chapter, detected_subject")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false }).limit(3);
+
+  const chaptersToReview = chapters.filter((chapter) => chapter.status === "a_reprendre" || chapter.status === "en_cours");
+  const reviewedCount = chapters.filter((chapter) => chapter.status === "maitrise").length;
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#fbfaff] px-4 py-8 text-slate-950 sm:px-8">
@@ -154,24 +171,75 @@ export default async function DashboardPage({
           </div>
         </header>
 
+        <nav aria-label="Accès rapide" className="mt-8 rounded-[2rem] border border-violet-100 bg-white/90 p-5 shadow-sm sm:p-6">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-lg font-black text-slate-900">Accès rapide</h2>
+            <span className="text-xs font-semibold text-slate-500">Retrouve tes espaces en un clic</span>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              { href: "/import", label: "Importer un cours", detail: "Ajouter un nouveau support", icon: "＋" },
+              { href: "/cours", label: "Mes cours", detail: "Retrouver mes matières", icon: "▤" },
+              { href: "/progression", label: "Ma progression", detail: "Suivre mes résultats", icon: "↗" },
+              { href: "/profile", label: "Mon profil", detail: "Gérer mon compte", icon: "◉" },
+            ].map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="group flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 transition hover:-translate-y-0.5 hover:border-violet-300 hover:bg-violet-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600"
+              >
+                <span aria-hidden="true" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-xl font-black text-violet-700 shadow-sm">{item.icon}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-black text-slate-900">{item.label}</span>
+                  <span className="block text-xs text-slate-500">{item.detail}</span>
+                </span>
+                <span aria-hidden="true" className="text-violet-500 transition group-hover:translate-x-1">→</span>
+              </Link>
+            ))}
+          </div>
+        </nav>
+
+        <section className="mt-8 grid gap-5 lg:grid-cols-[1.4fr_1fr]">
+          <div className="rounded-[2rem] border border-violet-200 bg-gradient-to-br from-violet-100 to-white p-6 shadow-sm sm:p-8">
+            <p className="text-xs font-black uppercase tracking-widest text-violet-700">Ta prochaine étape</p>
+            <h2 className="mt-2 text-2xl font-black">Qu'est-ce qu'on révise aujourd'hui ?</h2>
+            {priorities.length ? <div className="mt-5 space-y-3">{priorities.map(topic => <div key={topic.topic_key} className="rounded-2xl bg-white p-4">
+              <p className="font-bold">{topic.topic || topic.topic_key.replaceAll("_"," ")}</p>
+              <p className="mt-1 text-sm text-slate-600">{Math.round(Number(topic.success_rate) || 0)}% de réussite · priorité de révision</p>
+            </div>)}</div> : <p className="mt-4 text-slate-600">Pas encore de difficulté récurrente identifiée. Fais quelques quiz pour obtenir des recommandations fondées sur tes réponses.</p>}
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Link href="/cours" className="rounded-xl bg-violet-600 px-5 py-3 text-sm font-black text-white hover:bg-violet-700">Réviser un cours</Link>
+              <Link href="/preparer-controle" className="rounded-xl border border-violet-200 bg-white px-5 py-3 text-sm font-black text-violet-700 hover:bg-violet-50">Préparer un contrôle</Link>
+            </div>
+          </div>
+          <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+            <h2 className="text-xl font-black">Reprendre là où tu en étais</h2>
+            {(recentCourses ?? []).length ? <div className="mt-4 space-y-3">{(recentCourses ?? []).map(course => <Link key={course.id} href={`/cours/${course.id}`} className="block rounded-2xl border border-slate-100 p-4 transition hover:border-violet-300 hover:bg-violet-50">
+              <p className="font-bold text-slate-900">{course.detected_chapter || course.title || "Cours"}</p>
+              <p className="mt-1 text-xs text-slate-500">{course.detected_subject || "Matière non détectée"} · Reprendre →</p>
+            </Link>)}</div> : <p className="mt-4 text-slate-500">Ton premier cours apparaîtra ici après son importation.</p>}
+          </div>
+        </section>
+
         <section className="mt-10 grid gap-5 md:grid-cols-3">
           <div className="rounded-[2rem] border border-violet-100 bg-white/85 p-6 shadow-sm">
             <p className="text-sm font-bold text-slate-500">
               Chapitres à reprendre
             </p>
-            <p className="mt-3 text-4xl font-black">{chapters.length}</p>
+            <p className="mt-3 text-4xl font-black">{chaptersToReview.length}</p>
           </div>
 
-          <div className="rounded-[2rem] border border-violet-100 bg-white/85 p-6 shadow-sm">
+          <Link href="/cours" className="rounded-[2rem] border border-violet-100 bg-white/85 p-6 shadow-sm transition hover:border-violet-300 hover:shadow-lg focus-visible:outline-2 focus-visible:outline-violet-600">
             <p className="text-sm font-bold text-slate-500">Travail du jour</p>
-            <p className="mt-3 text-4xl font-black">Réviser</p>
-          </div>
+            <p className="mt-3 text-3xl font-black">Réviser →</p>
+            <p className="mt-2 text-sm text-slate-500">Choisis un cours pour commencer</p>
+          </Link>
 
           <div className="rounded-[2rem] border border-violet-100 bg-white/85 p-6 shadow-sm">
             <p className="text-sm font-bold text-slate-500">
               Progression globale
             </p>
-            <p className="mt-3 text-4xl font-black">{masteryPercent}%</p>
+            <p className="mt-3 text-4xl font-black">{hasProgress ? `${masteryPercent}%` : "—"}</p>
           </div>
         </section>
 
@@ -207,7 +275,7 @@ export default async function DashboardPage({
             </div>
 
             <span className="rounded-full bg-violet-50 px-5 py-3 text-sm font-black text-violet-700">
-              {chapters.length} en cours
+              {chaptersToReview.length} à revoir · {reviewedCount} maîtrisé(s)
             </span>
           </div>
 

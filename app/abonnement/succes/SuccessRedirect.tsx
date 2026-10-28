@@ -56,7 +56,7 @@ export default function SuccessRedirect({ sessionId }: SuccessRedirectProps) {
           !response.ok ||
           checkout.status !== "complete" ||
           !checkout.user_id ||
-          checkout.plan !== "standard" ||
+          !["standard", "premium", "pro"].includes(checkout.plan || "") ||
           checkout.session_id !== sessionId ||
           !checkout.subscription_id
         ) {

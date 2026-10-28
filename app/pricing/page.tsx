@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import SubscribeButton from "../../components/SubscribeButton";
+import { createClient } from "../../utils/supabase/server";
+import NavbarUserMenu from "../../components/NavbarUserMenu";
 
 export const metadata: Metadata = {
   title: "Tarifs",
@@ -11,6 +13,7 @@ export const metadata: Metadata = {
 const plans = [
   {
     name: "Standard",
+    key: "standard" as const,
     price: "9,99 €",
     badgeClass: "border-blue-200 bg-blue-50 text-blue-700",
     features: [
@@ -26,29 +29,31 @@ const plans = [
   },
   {
     name: "Premium",
+    key: "premium" as const,
     price: "14,99 €",
     badgeClass: "border-amber-200 bg-amber-50 text-amber-800",
     features: [
       "Tout Standard",
       "Plus de générations IA",
       "Suivi intelligent des progrès",
-      "Cahier de vacances personnalisé",
+      "Préparation aux contrôles",
       "Exercices adaptés aux erreurs",
-      "Priorité IA",
+      "Importation de cours et quiz personnalisés",
     ],
     featured: false,
   },
   {
     name: "Pro",
+    key: "pro" as const,
     price: "19,99 €",
     badgeClass: "border-violet-200 bg-violet-100 text-violet-900",
     features: [
       "Tout Premium",
-      "Examens blancs IA",
-      "Plan de révision intelligent",
-      "Coaching IA",
+      "Entraînement aux contrôles",
+      "Suivi des notions à renforcer",
+      "Fiches et quiz adaptés",
       "Statistiques avancées",
-      "Futures fonctionnalités exclusives",
+      "Évolutions à venir",
     ],
     featured: false,
   },
@@ -58,12 +63,12 @@ const faqs = [
   {
     question: "Puis-je résilier à tout moment ?",
     answer:
-      "Oui. Lorsque les abonnements seront activés, vous pourrez arrêter votre formule simplement, sans engagement de durée.",
+      "Les abonnements sont mensuels. La gestion de la résiliation sera vérifiée avant le lancement commercial.",
   },
   {
     question: "Mes paiements sont-ils sécurisés ?",
     answer:
-      "Les paiements seront traités par Stripe, une infrastructure reconnue mondialement. Aucun paiement n'est encore activé sur cette page.",
+      "Les paiements sont traités par Stripe. En environnement de test, les transactions sont simulées.",
   },
   {
     question: "Mes données sont-elles protégées ?",
@@ -71,9 +76,9 @@ const faqs = [
       "EducationIA est conçu pour préserver la confidentialité des cours et des informations personnelles de chaque utilisateur.",
   },
   {
-    question: "Quand Premium et Pro seront-ils disponibles ?",
+    question: "Les fonctionnalités sont-elles toutes disponibles ?",
     answer:
-      "Ces formules sont en préparation. Leurs fonctionnalités seront ouvertes progressivement lorsqu'elles seront prêtes.",
+      "Les outils de révision existants sont accessibles selon votre formule. Certaines nouveautés annoncées sont encore en développement.",
   },
 ];
 
@@ -94,6 +99,14 @@ type PricingPageProps = {
 
 export default async function PricingPage({ searchParams }: PricingPageProps) {
   const { checkout } = await searchParams;
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const displayName = typeof user?.user_metadata?.full_name === "string"
+    ? user.user_metadata.full_name
+    : typeof user?.user_metadata?.name === "string"
+      ? user.user_metadata.name : null;
+  const avatarUrl = typeof user?.user_metadata?.avatar_url === "string"
+    ? user.user_metadata.avatar_url : null;
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#fffdfa] text-slate-950">
@@ -111,12 +124,13 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
             </span>
             <span className="text-lg font-black tracking-tight sm:text-xl">EducationIA</span>
           </Link>
-          <Link
-            href="/register"
-            className="rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-violet-600/20 transition duration-300 hover:-translate-y-0.5 hover:bg-violet-700 sm:px-6 sm:py-3"
-          >
-            Commencer
-          </Link>
+          {user ? (
+            <NavbarUserMenu email={user.email || null} displayName={displayName} avatarUrl={avatarUrl} />
+          ) : (
+            <Link href="/register" className="rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-violet-600/20 transition duration-300 hover:-translate-y-0.5 hover:bg-violet-700 sm:px-6 sm:py-3">
+              Commencer
+            </Link>
+          )}
         </div>
       </nav>
 
@@ -136,11 +150,8 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
             quiz et cartes mentales en quelques secondes.
           </p>
           <div className="mt-10 flex flex-col justify-center gap-3 sm:flex-row">
-            <Link
-              href="/register"
-              className="rounded-2xl bg-violet-600 px-8 py-4 text-base font-bold text-white shadow-xl shadow-violet-600/25 transition duration-300 hover:-translate-y-0.5 hover:bg-violet-700"
-            >
-              Commencer
+            <Link href={user ? "/dashboard" : "/register"} className="rounded-2xl bg-violet-600 px-8 py-4 text-base font-bold text-white shadow-xl shadow-violet-600/25 transition duration-300 hover:-translate-y-0.5 hover:bg-violet-700">
+              {user ? "Mon tableau de bord" : "Commencer"}
             </Link>
             <a
               href="#offres"
@@ -174,11 +185,7 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
                   <span className={`rounded-full border px-3 py-1.5 text-xs font-black uppercase tracking-[0.14em] ${plan.badgeClass}`}>
                     {plan.name}
                   </span>
-                  {!plan.featured && (
-                    <span className="rounded-full border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 px-3 py-1.5 text-xs font-bold text-amber-800">
-                      Bientôt
-                    </span>
-                  )}
+
                 </div>
 
                 <div className="mt-8 border-b border-slate-100 pb-8">
@@ -199,21 +206,11 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
                   ))}
                 </ul>
 
-                {plan.featured ? (
-                  <SubscribeButton
-                    plan="standard"
-                    text="Choisir Standard"
-                    className="w-full rounded-2xl bg-violet-600 px-6 py-4 text-sm font-bold text-white shadow-lg shadow-violet-600/25 transition duration-300 hover:-translate-y-0.5 hover:bg-violet-700 hover:shadow-xl hover:shadow-violet-600/30 focus-visible:outline-violet-600"
-                  />
-                ) : (
-                  <button
-                    type="button"
-                    disabled
-                    className="w-full cursor-not-allowed rounded-2xl border border-slate-200 bg-slate-100 px-6 py-4 text-sm font-bold text-slate-400"
-                  >
-                    Bientôt disponible
-                  </button>
-                )}
+                <SubscribeButton
+                  plan={plan.key}
+                  text={`Choisir ${plan.name}`}
+                  className="w-full rounded-2xl bg-violet-600 px-6 py-4 text-sm font-bold text-white shadow-lg shadow-violet-600/25 transition hover:-translate-y-0.5 hover:bg-violet-700 focus-visible:outline-violet-600"
+                />
               </article>
             ))}
           </div>
