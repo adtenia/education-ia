@@ -37,13 +37,40 @@ export async function POST(request: Request) {
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const result = await client.responses.create({
       model: "gpt-4.1-mini",
-      max_output_tokens: 4000,
+      max_output_tokens: 5000,
       input: [
-        { role: "system", content: `Tu es un enseignant qui prépare réellement un élève à un contrôle. Réponds en français avec du Markdown clair, structuré, sans emoji. Construis : 1) les objectifs d'apprentissage par chapitre, 2) les explications détaillées des notions difficiles avec exemples tirés des sources, 3) 6 exercices progressifs variés et réalisables, 4) les corrections détaillées séparées à la fin, 5) une méthode de vérification de la maîtrise et les erreurs fréquentes justifiées par les sources. Niveau scolaire: ${schoolClass}. Note visée: ${target}/20. Date du contrôle: ${date}. Utilise uniquement les cours fournis pour les faits et compétences. N'invente ni programme officiel, ni connaissances absentes, ni prédiction de note. Si les sources sont incomplètes, précise ce qui manque. Ne donne pas la correction immédiatement après chaque exercice.` },
+        { role: "system", content: `Tu es un excellent enseignant français qui entraîne activement un élève à son contrôle. Renvoie UNIQUEMENT un objet JSON valide, sans Markdown ni balises, de la forme {"title":"...","intro":"une phrase motivante et utile","lessons":[{"topic":"notion","explanation":"explication claire en 2-4 phrases","example":"exemple concret résolu"}],"questions":[{"topic":"chapitre","question":"question précise","choices":["choix A","choix B","choix C","choix D"],"correctIndex":0,"explanation":"correction pédagogique en 2-4 phrases expliquant pourquoi et comment","hint":"indice sans donner la réponse"}],"missing":"ce qui manque dans les sources, ou chaîne vide"}. Produis entre 4 et 6 mini-leçons et exactement 8 questions de QCM, avec 4 choix et une seule bonne réponse par question. Varie les chapitres, les compétences, les niveaux et les types de raisonnement, avec des distracteurs plausibles. La réponse ne doit PAS être une fiche longue : le parcours affichera les questions une par une. Niveau scolaire: ${schoolClass}. Note visée: ${target}/20. Date du contrôle: ${date}. Utilise exclusivement les cours fournis pour les faits et compétences, ne fabrique pas de connaissances absentes, n'affirme pas que l'élève obtiendra une note. Si une source est insuffisante, renseigne missing. Ne produis aucun HTML ni lien. Toutes les chaînes sont en français.` },
         { role: "user", content: JSON.stringify(source) },
       ],
     });
-    return NextResponse.json({ content: result.output_text });
+    let parsed: unknown;
+    try {
+      const raw = result.output_text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+      parsed = JSON.parse(raw);
+    } catch {
+      return NextResponse.json({ error: "L'IA n'a pas renvoyé un entraînement valide. Réessaie." }, { status: 502 });
+    }
+    const data = parsed as Record<string, unknown>;
+    const lessons = Array.isArray(data.lessons) ? data.lessons.filter((x: unknown) => {
+      const v = x as Record<string, unknown>;
+      return v && typeof v.topic === "string" && typeof v.explanation === "string" && typeof v.example === "string";
+    }).slice(0, 6) : [];
+    const questions = Array.isArray(data.questions) ? data.questions.filter((x: unknown) => {
+      const v = x as Record<string, unknown>;
+      return v && typeof v.question === "string" && Array.isArray(v.choices) && v.choices.length === 4
+        && v.choices.every((choice: unknown) => typeof choice === "string")
+        && Number.isInteger(v.correctIndex) && Number(v.correctIndex) >= 0 && Number(v.correctIndex) <= 3
+        && typeof v.explanation === "string" && typeof v.hint === "string";
+    }).slice(0, 8) : [];
+    if (!questions.length || !lessons.length) {
+      return NextResponse.json({ error: "La séance générée est incomplète. Réessaie." }, { status: 502 });
+    }
+    return NextResponse.json({ session: {
+      title: typeof data.title === "string" ? data.title : "Préparation au contrôle",
+      intro: typeof data.intro === "string" ? data.intro : "",
+      missing: typeof data.missing === "string" ? data.missing : "",
+      lessons, questions,
+    } });
   } catch (error) {
     console.error("Exam preparation failed", error);
     return NextResponse.json({ error: "La préparation n'a pas pu être générée. Réessaie." }, { status: 500 });
