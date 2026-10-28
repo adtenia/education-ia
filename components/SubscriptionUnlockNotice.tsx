@@ -64,6 +64,11 @@ export default function SubscriptionUnlockNotice() {
     setActivationPending(true);
     if (animationAlreadySeen) {
       window.sessionStorage.removeItem(SUBSCRIPTION_UNLOCK_PENDING_KEY);
+    } else {
+      // Checkout has already verified the paid Stripe session. Show the
+      // purchased tier's animation immediately; don't wait for the webhook.
+      markerToSave.current = animationMarker;
+      setActivePlan(activationPlan);
     }
 
     async function checkSubscription() {
@@ -88,10 +93,6 @@ export default function SubscriptionUnlockNotice() {
         if (confirmed) {
           stopped = true;
           setActivationPending(false);
-          if (!animationAlreadySeen) {
-            markerToSave.current = animationMarker;
-            setActivePlan(activationPlan);
-          }
           window.dispatchEvent(
             new CustomEvent("educationia:subscription-updated", { detail: subscription })
           );
@@ -109,6 +110,7 @@ export default function SubscriptionUnlockNotice() {
         if (Date.now() - startedAt >= ACTIVATION_TIMEOUT_MS) {
           stopped = true;
           setActivationPending(false);
+          console.warn("[subscription-unlock] Stripe checkout validé mais abonnement non synchronisé après 30 s.");
           return;
         }
         pollTimer = setTimeout(() => void checkSubscription(), POLLING_INTERVAL_MS);
