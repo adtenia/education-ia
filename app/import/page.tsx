@@ -142,6 +142,11 @@ export default function ImportPage() {
       return;
     }
 
+    if (files.some((file) => file.size > 7_000_000)) {
+      alert("Une photo dépasse 7 Mo. Compresse-la ou prends une photo moins lourde.");
+      return;
+    }
+
     resetSubjectConfirmation();
     setSelectedFiles(files);
     setImagePreviews(files.map((file) => URL.createObjectURL(file)));
@@ -339,7 +344,9 @@ export default function ImportPage() {
 
     const fileNames = selectedFiles.map((file) => file.name);
 
-    const aiResponse = await fetch("/api/analyze-course", {
+    let aiResponse: Response;
+    try {
+      aiResponse = await fetch("/api/analyze-course", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -349,8 +356,20 @@ export default function ImportPage() {
         images,
       }),
     });
+    } catch {
+      setIsLoading(false);
+      alert("Connexion interrompue. Vérifie ta connexion puis réessaie.");
+      return;
+    }
 
-    const aiData = await aiResponse.json();
+    let aiData;
+    try {
+      aiData = await aiResponse.json();
+    } catch {
+      setIsLoading(false);
+      alert("Le serveur n'a pas pu traiter ces photos. Réessaie avec des images moins lourdes.");
+      return;
+    }
 
     if (aiResponse.status === 403 && aiData.code === "SUBSCRIPTION_REQUIRED") {
       setIsLoading(false);
@@ -360,7 +379,7 @@ export default function ImportPage() {
 
     if (!aiData.success) {
       console.error("Erreur OpenAI :", aiData.error);
-      alert("OpenAI n'a pas réussi à analyser les photos.");
+      alert(aiData.error || "L’analyse des photos a échoué. Réessaie.");
       setIsLoading(false);
       return;
     }
