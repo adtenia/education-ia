@@ -1,6 +1,7 @@
 import { normalizeInternalReturnPath } from "../../../../lib/internal-return-path";
 import { getStripe } from "../../../../lib/stripe";
 import { createClient } from "../../../../utils/supabase/server";
+import { createAdminClient } from "../../../../utils/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
@@ -108,6 +109,41 @@ export async function POST(request: Request) {
 
     if (subscription.id !== subscriptionId || expectedLineItems.length !== 1) {
       return json({ error: "Le tarif acheté ne correspond pas à la formule sélectionnée." }, 409);
+    }
+
+    // A verified Checkout must activate the purchased plan even when testing
+    // on localhost, where the deployed Stripe webhook cannot reach this server.
+    // The database RPC also guards against older subscription events.
+    const matchingSubscriptionPrice = subscription.items.data.some(
+      (item) => item.price.id === expectedPriceId
+    );
+    if (!matchingSubscriptionPrice || !["active", "trialing"].includes(subscription.status)) {
+      return json({ error: "L'abonnement Stripe n'est pas encore actif." }, 409);
+    }
+
+    const currentPeriodEnd = Math.max(
+      ...subscription.items.data.map((item) => item.current_period_end)
+    );
+    const admin = createAdminClient();
+    const { error: syncError } = await admin.rpc("sync_stripe_subscription", {
+      p_user_id: user.id,
+      p_plan: plan,
+      p_subscription_status: subscription.status,
+      p_stripe_customer_id: typeof subscription.customer === "string"
+        ? subscription.customer
+        : subscription.customer?.id || null,
+      p_stripe_subscription_id: subscription.id,
+      p_current_period_end: Number.isFinite(currentPeriodEnd)
+        ? new Date(currentPeriodEnd * 1000).toISOString()
+        : null,
+      p_cancel_at_period_end: subscription.cancel_at_period_end,
+      p_access_allowed: true,
+      p_event_created_at: Math.floor(Date.now() / 1000),
+      p_replace_subscription: true,
+    });
+    if (syncError) {
+      console.error("[checkout-session] activation Supabase impossible", syncError.message);
+      return json({ error: "Paiement confirmé, activation en attente. Réessayez dans un instant." }, 503);
     }
 
     if (!animationUsedBy) {
