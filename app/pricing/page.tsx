@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import SubscribeButton from "../../components/SubscribeButton";
+import { createClient } from "../../utils/supabase/server";
+import NavbarUserMenu from "../../components/NavbarUserMenu";
 
 export const metadata: Metadata = {
   title: "Tarifs",
@@ -97,6 +99,14 @@ type PricingPageProps = {
 
 export default async function PricingPage({ searchParams }: PricingPageProps) {
   const { checkout } = await searchParams;
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const displayName = typeof user?.user_metadata?.full_name === "string"
+    ? user.user_metadata.full_name
+    : typeof user?.user_metadata?.name === "string"
+      ? user.user_metadata.name : null;
+  const avatarUrl = typeof user?.user_metadata?.avatar_url === "string"
+    ? user.user_metadata.avatar_url : null;
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#fffdfa] text-slate-950">
@@ -114,12 +124,13 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
             </span>
             <span className="text-lg font-black tracking-tight sm:text-xl">EducationIA</span>
           </Link>
-          <Link
-            href="/register"
-            className="rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-violet-600/20 transition duration-300 hover:-translate-y-0.5 hover:bg-violet-700 sm:px-6 sm:py-3"
-          >
-            Commencer
-          </Link>
+          {user ? (
+            <NavbarUserMenu email={user.email || null} displayName={displayName} avatarUrl={avatarUrl} />
+          ) : (
+            <Link href="/register" className="rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-violet-600/20 transition duration-300 hover:-translate-y-0.5 hover:bg-violet-700 sm:px-6 sm:py-3">
+              Commencer
+            </Link>
+          )}
         </div>
       </nav>
 
@@ -139,11 +150,8 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
             quiz et cartes mentales en quelques secondes.
           </p>
           <div className="mt-10 flex flex-col justify-center gap-3 sm:flex-row">
-            <Link
-              href="/register"
-              className="rounded-2xl bg-violet-600 px-8 py-4 text-base font-bold text-white shadow-xl shadow-violet-600/25 transition duration-300 hover:-translate-y-0.5 hover:bg-violet-700"
-            >
-              Commencer
+            <Link href={user ? "/dashboard" : "/register"} className="rounded-2xl bg-violet-600 px-8 py-4 text-base font-bold text-white shadow-xl shadow-violet-600/25 transition duration-300 hover:-translate-y-0.5 hover:bg-violet-700">
+              {user ? "Mon tableau de bord" : "Commencer"}
             </Link>
             <a
               href="#offres"
