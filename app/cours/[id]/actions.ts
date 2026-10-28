@@ -123,7 +123,25 @@ export async function createRevisionSheet(coursId: string) {
   redirect(`/cours/${coursId}`);
 }
 
-export async function createQuiz(coursId: string) {
+export async function deleteQuiz(coursId: string, quizId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { data: quiz } = await supabase.from("quiz")
+    .select("id").eq("id", quizId).eq("cours_id", coursId).eq("user_id", user.id).maybeSingle();
+  if (!quiz) redirect(`/cours/${coursId}`);
+
+  // Delete children first so this works with schemas without ON DELETE CASCADE.
+  const { error: questionsError } = await supabase.from("quiz_questions").delete().eq("quiz_id", quizId);
+  if (questionsError) throw new Error("Impossible de supprimer les questions du quiz.");
+  const { error: quizError } = await supabase.from("quiz").delete()
+    .eq("id", quizId).eq("cours_id", coursId).eq("user_id", user.id);
+  if (quizError) throw new Error("Impossible de supprimer le quiz.");
+  redirect(`/cours/${coursId}`);
+}
+
+export async function createQuiz(coursId: string, formData: FormData) {
   const supabase = await createClient();
 
   const {
@@ -141,6 +159,9 @@ export async function createQuiz(coursId: string) {
 
   if (!cours) redirect("/cours");
 
+  const difficultyRaw = formData.get("difficulty");
+  const difficulty = ["facile", "equilibre", "avance"].includes(String(difficultyRaw))
+    ? String(difficultyRaw) : "equilibre";
   const cookieStore = await cookies();
 
   const response = await fetch(
@@ -155,6 +176,7 @@ export async function createQuiz(coursId: string) {
         summary: cours.summary || "",
         course: cours.course_content || null,
         chapter: cours.detected_chapter || cours.title || "Chapitre",
+        difficulty,
       }),
     }
   );
