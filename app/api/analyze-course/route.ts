@@ -172,6 +172,20 @@ export async function POST(request: Request) {
       });
     }
 
+    // Reject invalid or excessively large payloads before forwarding anything to the AI provider.
+    const allowedTypes = new Set(["image/png", "image/jpeg", "image/jpg", "image/webp"]);
+    const valid = images.every((image: unknown) => {
+      if (!image || typeof image !== "object") return false;
+      const item = image as Record<string, unknown>;
+      return typeof item.mimeType === "string" && allowedTypes.has(item.mimeType)
+        && typeof item.imageBase64 === "string"
+        && item.imageBase64.length > 0 && item.imageBase64.length <= 10_000_000
+        && /^[A-Za-z0-9+/=]+$/.test(item.imageBase64);
+    });
+    if (!valid) {
+      return NextResponse.json({ success: false, error: "Images invalides ou trop volumineuses (maximum environ 7 Mo par image)." }, { status: 400 });
+    }
+
     const imageContents = images.map((image: ImageInput) => ({
       type: "input_image" as const,
       image_url: `data:${image.mimeType};base64,${image.imageBase64}`,
