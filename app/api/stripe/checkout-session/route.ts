@@ -143,7 +143,8 @@ export async function POST(request: Request) {
     });
     if (syncError) {
       console.error("[checkout-session] activation Supabase impossible", syncError.message);
-      return json({ error: "Paiement confirmé, activation en attente. Réessayez dans un instant." }, 503);
+      // Stripe has confirmed the payment. Do not suppress the celebration:
+      // the webhook may still complete the subscription sync asynchronously.
     }
 
     if (!animationUsedBy) {
