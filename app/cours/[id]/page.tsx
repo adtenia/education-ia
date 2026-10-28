@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import PrintButton from "../../../components/PrintButton";
+import DeleteQuizButton from "../../../components/DeleteQuizButton";
 import SubscriptionRequiredDialog from "../../../components/SubscriptionRequiredDialog";
 import { getSubscriptionAccess } from "../../../lib/subscription-access";
 import { createClient } from "../../../utils/supabase/server";
@@ -11,7 +12,7 @@ import StructuredCourseContent, {
   type StructuredCourse,
 } from "./StructuredCourseContent";
 import SummaryContent from "./SummaryContent";
-import { createQuiz, createRevisionSheet, deleteCours } from "./actions";
+import { createQuiz, createRevisionSheet, deleteCours, deleteQuiz } from "./actions";
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -273,7 +274,13 @@ export default async function CoursDetailPage({ params, searchParams }: PageProp
               <p className="text-sm font-bold uppercase tracking-wider text-emerald-700">Quiz</p>
               <h2 className="mt-1 text-2xl font-bold text-slate-950 sm:text-3xl">Quiz du cours</h2>
             </div>
-            <form action={createQuizWithId}>
+            <form action={createQuizWithId} className="flex flex-wrap items-center gap-3">
+              <label htmlFor="quiz-difficulty" className="text-sm font-bold text-slate-600">Difficulté</label>
+              <select id="quiz-difficulty" name="difficulty" defaultValue="equilibre" className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-semibold">
+                <option value="facile">Accessible</option>
+                <option value="equilibre">Équilibrée</option>
+                <option value="avance">Avancée</option>
+              </select>
               <button type="submit" className="w-full rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 sm:w-auto">
                 Générer un quiz
               </button>
@@ -292,9 +299,12 @@ export default async function CoursDetailPage({ params, searchParams }: PageProp
                     <p className={`mt-2 text-sm font-semibold ${scoreColor}`}>
                       {score === null ? "Pas encore réalisé" : `Dernier score : ${score}%`}
                     </p>
-                    <Link href={`/quiz/${quiz.id}`} className="mt-5 inline-flex rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">
-                      Ouvrir le quiz
-                    </Link>
+                    <div className="mt-5 flex flex-wrap items-center gap-3">
+                      <Link href={`/quiz/${quiz.id}`} className="inline-flex rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">
+                        Ouvrir le quiz
+                      </Link>
+                      <DeleteQuizButton action={deleteQuiz.bind(null, id, quiz.id)} />
+                    </div>
                   </article>
                 );
               })}
