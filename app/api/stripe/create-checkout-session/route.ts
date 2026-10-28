@@ -34,10 +34,14 @@ export async function POST(request: Request) {
     }
 
     const secretKey = process.env.STRIPE_SECRET_KEY;
-    const standardPriceId = process.env.STRIPE_STANDARD_PRICE_ID;
+    const priceIds = {
+      standard: process.env.STRIPE_STANDARD_PRICE_ID,
+      premium: process.env.STRIPE_PREMIUM_PRICE_ID,
+      pro: process.env.STRIPE_PRO_PRICE_ID,
+    } as const;
     const appUrl = getAppUrl();
 
-    if (!secretKey || !standardPriceId) {
+    if (!secretKey) {
       console.error("Configuration Stripe incomplète.");
       return Response.json(
         { error: "Le paiement est temporairement indisponible." },
@@ -71,21 +75,31 @@ export async function POST(request: Request) {
         ? requestBody.plan
         : undefined;
 
-    if (requestedPlan !== undefined && requestedPlan !== "standard") {
+    if (requestedPlan !== "standard" && requestedPlan !== "premium" && requestedPlan !== "pro") {
       return Response.json({ error: "Formule non disponible." }, { status: 400 });
+    }
+
+    const priceId = priceIds[requestedPlan as keyof typeof priceIds];
+    if (!priceId) {
+      return Response.json({ error: "Le tarif de cette formule n'est pas encore configuré." }, { status: 503 });
     }
 
     const metadata = {
       user_id: user.id,
-      plan: "standard",
+      plan: requestedPlan,
       returnTo,
     };
+
+    const requestOrigin = new URL(request.url).origin;
+    const checkoutOrigin = process.env.NODE_ENV === "development" && /^http:\/\/localhost:\d+$/.test(requestOrigin)
+      ? requestOrigin
+      : appUrl;
 
     const session = await getStripe().checkout.sessions.create({
       mode: "subscription",
       line_items: [
         {
-          price: standardPriceId,
+          price: priceId,
           quantity: 1,
         },
       ],
@@ -94,8 +108,8 @@ export async function POST(request: Request) {
       subscription_data: {
         metadata,
       },
-      success_url: `${appUrl}/abonnement/succes?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${appUrl}/?checkout=cancelled`,
+      success_url: `${checkoutOrigin}/abonnement/succes?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${checkoutOrigin}/pricing?checkout=cancelled`,
     });
 
     if (!session.url) {
