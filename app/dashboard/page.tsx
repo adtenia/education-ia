@@ -121,6 +121,18 @@ export default async function DashboardPage({
       .filter((chapter) => chapter.courseCount > 0);
   }
 
+  const { data: priorityRows } = await supabase.from("user_topic_progress")
+    .select("topic_key, topic, success_rate, answered_questions, learning_status")
+    .eq("user_id", user.id)
+    .eq("learning_status", "needs_review")
+    .order("success_rate", { ascending: true })
+    .limit(3);
+  const priorities = (priorityRows ?? []).filter(row => Number(row.answered_questions) >= 3);
+  const { data: recentCourses } = await supabase.from("cours")
+    .select("id, title, detected_chapter, detected_subject")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false }).limit(3);
+
   const chaptersToReview = chapters.filter((chapter) => chapter.status === "a_reprendre" || chapter.status === "en_cours");
   const reviewedCount = chapters.filter((chapter) => chapter.status === "maitrise").length;
 
@@ -186,6 +198,28 @@ export default async function DashboardPage({
             ))}
           </div>
         </nav>
+
+        <section className="mt-8 grid gap-5 lg:grid-cols-[1.4fr_1fr]">
+          <div className="rounded-[2rem] border border-violet-200 bg-gradient-to-br from-violet-100 to-white p-6 shadow-sm sm:p-8">
+            <p className="text-xs font-black uppercase tracking-widest text-violet-700">Ta prochaine étape</p>
+            <h2 className="mt-2 text-2xl font-black">Qu'est-ce qu'on révise aujourd'hui ?</h2>
+            {priorities.length ? <div className="mt-5 space-y-3">{priorities.map(topic => <div key={topic.topic_key} className="rounded-2xl bg-white p-4">
+              <p className="font-bold">{topic.topic || topic.topic_key.replaceAll("_"," ")}</p>
+              <p className="mt-1 text-sm text-slate-600">{Math.round(Number(topic.success_rate) || 0)}% de réussite · priorité de révision</p>
+            </div>)}</div> : <p className="mt-4 text-slate-600">Pas encore de difficulté récurrente identifiée. Fais quelques quiz pour obtenir des recommandations fondées sur tes réponses.</p>}
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Link href="/cours" className="rounded-xl bg-violet-600 px-5 py-3 text-sm font-black text-white hover:bg-violet-700">Réviser un cours</Link>
+              <Link href="/preparer-controle" className="rounded-xl border border-violet-200 bg-white px-5 py-3 text-sm font-black text-violet-700 hover:bg-violet-50">Préparer un contrôle</Link>
+            </div>
+          </div>
+          <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+            <h2 className="text-xl font-black">Reprendre là où tu en étais</h2>
+            {(recentCourses ?? []).length ? <div className="mt-4 space-y-3">{(recentCourses ?? []).map(course => <Link key={course.id} href={`/cours/${course.id}`} className="block rounded-2xl border border-slate-100 p-4 transition hover:border-violet-300 hover:bg-violet-50">
+              <p className="font-bold text-slate-900">{course.detected_chapter || course.title || "Cours"}</p>
+              <p className="mt-1 text-xs text-slate-500">{course.detected_subject || "Matière non détectée"} · Reprendre →</p>
+            </Link>)}</div> : <p className="mt-4 text-slate-500">Ton premier cours apparaîtra ici après son importation.</p>}
+          </div>
+        </section>
 
         <section className="mt-10 grid gap-5 md:grid-cols-3">
           <div className="rounded-[2rem] border border-violet-100 bg-white/85 p-6 shadow-sm">
