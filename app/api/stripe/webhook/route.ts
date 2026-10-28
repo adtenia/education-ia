@@ -25,24 +25,28 @@ async function syncSubscription(
   statusOverride?: string,
   replaceSubscription = false
 ) {
-  const expectedPriceId = process.env.STRIPE_STANDARD_PRICE_ID;
+  const priceIds: Record<string, string | undefined> = {
+    standard: process.env.STRIPE_STANDARD_PRICE_ID,
+    premium: process.env.STRIPE_PREMIUM_PRICE_ID,
+    pro: process.env.STRIPE_PRO_PRICE_ID,
+  };
   const userId = subscription.metadata.user_id;
   const plan = subscription.metadata.plan;
-  const hasStandardPrice = Boolean(
-    expectedPriceId && subscription.items.data.some((item) => item.price.id === expectedPriceId)
+  const hasMatchingPrice = Boolean(
+    priceIds[plan] && subscription.items.data.some((item) => item.price.id === priceIds[plan])
   );
 
-  if (!userId || plan !== "standard" || !hasStandardPrice) {
+  if (!userId || !(plan in priceIds) || !hasMatchingPrice) {
     console.error("Abonnement Stripe ignoré : utilisateur, plan ou Price ID invalide.");
     return;
   }
 
   const status = statusOverride || subscription.status;
-  const accessAllowed = hasStandardPrice && ACCESS_STATUSES.has(status);
+  const accessAllowed = hasMatchingPrice && ACCESS_STATUSES.has(status);
   const admin = createAdminClient();
   const { error } = await admin.rpc("sync_stripe_subscription", {
     p_user_id: userId,
-    p_plan: "standard",
+    p_plan: plan,
     p_subscription_status: status,
     p_stripe_customer_id: objectId(subscription.customer),
     p_stripe_subscription_id: subscription.id,
@@ -96,7 +100,7 @@ export async function POST(request: Request) {
         const session = event.data.object;
         const subscriptionId = objectId(session.subscription);
 
-        if (subscriptionId && session.metadata?.user_id && session.metadata.plan === "standard") {
+        if (subscriptionId && session.metadata?.user_id && ["standard", "premium", "pro"].includes(session.metadata.plan || "")) {
           const subscription = await retrieveSubscription(subscriptionId);
           await syncSubscription(subscription, event.created, undefined, true);
         }
