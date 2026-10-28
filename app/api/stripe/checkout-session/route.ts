@@ -50,12 +50,6 @@ export async function POST(request: Request) {
     return json({ error: "Identifiant de vérification invalide." }, 400);
   }
 
-  const expectedPriceId = process.env.STRIPE_STANDARD_PRICE_ID;
-  if (!expectedPriceId) {
-    console.error("[checkout-session] STRIPE_STANDARD_PRICE_ID est absente.");
-    return json({ error: "Configuration Stripe incomplète." }, 500);
-  }
-
   try {
     const stripe = getStripe();
     const session = await stripe.checkout.sessions.retrieve(sessionId);
@@ -64,9 +58,16 @@ export async function POST(request: Request) {
         ? session.subscription
         : session.subscription?.id || null;
 
+    const plan = session.metadata?.plan;
+    const priceIds: Record<string, string | undefined> = {
+      standard: process.env.STRIPE_STANDARD_PRICE_ID,
+      premium: process.env.STRIPE_PREMIUM_PRICE_ID,
+      pro: process.env.STRIPE_PRO_PRICE_ID,
+    };
     if (
       session.metadata?.user_id !== user.id ||
-      session.metadata?.plan !== "standard"
+      !plan ||
+      !(plan in priceIds)
     ) {
       return json({ error: "Session Checkout introuvable." }, 404);
     }
@@ -79,6 +80,11 @@ export async function POST(request: Request) {
         session.payment_status !== "no_payment_required")
     ) {
       return json({ error: "Le paiement n'est pas confirmé." }, 409);
+    }
+
+    const expectedPriceId = priceIds[plan];
+    if (!expectedPriceId) {
+      return json({ error: "Tarif Stripe non configuré pour cette formule." }, 503);
     }
 
     const animationUsedBy = session.metadata?.[ANIMATION_USED_BY_KEY];
@@ -101,7 +107,7 @@ export async function POST(request: Request) {
     });
 
     if (subscription.id !== subscriptionId || expectedLineItems.length !== 1) {
-      return json({ error: "Le tarif acheté ne correspond pas au plan Standard." }, 409);
+      return json({ error: "Le tarif acheté ne correspond pas à la formule sélectionnée." }, 409);
     }
 
     if (!animationUsedBy) {
@@ -117,7 +123,7 @@ export async function POST(request: Request) {
     return json({
       status: session.status,
       user_id: user.id,
-      plan: "standard",
+      plan,
       session_id: session.id,
       subscription_id: subscriptionId,
       returnTo: normalizeInternalReturnPath(session.metadata?.returnTo),
