@@ -28,13 +28,16 @@ export default async function ProfilePage() {
       <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_15%_10%,rgba(139,92,246,0.18),transparent_32%),radial-gradient(circle_at_85%_0%,rgba(99,102,241,0.13),transparent_30%),linear-gradient(180deg,#ffffff,#faf7ff)]" />
 
       <div className="mx-auto max-w-7xl">
-        <div className="flex items-center justify-between">
-          <Link
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <Link
             href="/dashboard"
             className="rounded-2xl border border-violet-100 bg-white px-6 py-3 font-black text-violet-700 shadow-sm transition hover:border-violet-300"
           >
             ← Retour au Dashboard
-          </Link>
+            </Link>
+            <Link href="/" className="rounded-2xl border border-slate-200 bg-white px-6 py-3 font-black text-slate-700 shadow-sm transition hover:border-violet-300 hover:text-violet-700">⌂ Accueil du site</Link>
+          </div>
 
           <Link
             href="/import"
