@@ -18,6 +18,14 @@ export default async function ProfilePage() {
     redirect("/login");
   }
 
+  const [statsResult, progressResult] = await Promise.all([
+    supabase.from("user_progress_stats").select("total_courses, total_quizzes, total_revision_sheets").eq("user_id", user.id).maybeSingle(),
+    supabase.from("progress").select("mastery_percent").eq("user_id", user.id),
+  ]);
+  const stats = statsResult.data;
+  const values = (progressResult.data ?? []).map((row) => Number(row.mastery_percent)).filter(Number.isFinite);
+  const average = values.length ? Math.round(values.reduce((a, b) => a + b, 0) / values.length) : null;
+
   const subscription = await getSubscriptionAccess();
   const stripeTestMode =
     process.env.NODE_ENV === "development" ||
@@ -154,35 +162,28 @@ export default async function ProfilePage() {
             <h2 className="text-2xl font-black">Progression</h2>
 
             <div className="mt-6 grid grid-cols-2 gap-4">
-              {["Cours importés", "Quiz réalisés", "Fiches créées", "Progression"].map(
-                (item, index) => (
-                  <div key={item} className="rounded-2xl bg-slate-50 p-5 text-center">
-                    <p className="text-sm font-bold text-slate-500">{item}</p>
-                    <p className="mt-2 text-3xl font-black text-violet-700">
-                      {index === 3 ? "0%" : "0"}
-                    </p>
-                  </div>
-                )
-              )}
+              {[
+                { label: "Cours importés", value: stats?.total_courses ?? "—" },
+                { label: "Quiz réalisés", value: stats?.total_quizzes ?? "—" },
+                { label: "Fiches créées", value: stats?.total_revision_sheets ?? "—" },
+                { label: "Progression", value: average === null ? "—" : String(average) + "%" },
+              ].map((item) => (
+                <div key={item.label} className="rounded-2xl bg-slate-50 p-5 text-center">
+                  <p className="text-sm font-bold text-slate-500">{item.label}</p>
+                  <p className="mt-2 text-3xl font-black text-violet-700">{item.value}</p>
+                </div>
+              ))}
             </div>
           </div>
         </section>
 
         <section className="mt-8 rounded-[2rem] border border-slate-200 bg-white p-7 shadow-sm">
-          <h2 className="text-2xl font-black">Paramètres</h2>
-
-          <div className="mt-6 grid gap-4 md:grid-cols-3">
-            <button className="rounded-2xl bg-slate-50 p-5 text-left font-black text-slate-700 transition hover:bg-violet-50 hover:text-violet-700">
-              Modifier l’email
-            </button>
-
-            <button className="rounded-2xl bg-slate-50 p-5 text-left font-black text-slate-700 transition hover:bg-violet-50 hover:text-violet-700">
-              Changer le mot de passe
-            </button>
-
-            <button className="rounded-2xl bg-slate-50 p-5 text-left font-black text-slate-700 transition hover:bg-violet-50 hover:text-violet-700">
-              Notifications
-            </button>
+          <h2 className="text-2xl font-black">Raccourcis du compte</h2>
+          <p className="mt-2 text-sm text-slate-500">Les réglages non disponibles ne sont plus présentés comme des boutons actifs.</p>
+          <div className="mt-6 grid gap-4 sm:grid-cols-3">
+            <Link href="/dashboard" className="rounded-2xl bg-violet-50 p-5 font-black text-violet-700 hover:bg-violet-100">Tableau de bord →</Link>
+            <Link href="/progression" className="rounded-2xl bg-slate-50 p-5 font-black text-slate-700 hover:bg-violet-50">Ma progression →</Link>
+            <Link href="/" className="rounded-2xl bg-slate-50 p-5 font-black text-slate-700 hover:bg-violet-50">Accueil du site →</Link>
           </div>
         </section>
 
