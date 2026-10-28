@@ -70,7 +70,10 @@ export async function POST(request: Request) {
     const subscription = await getSubscriptionAccess();
     if (!subscription.hasAccess) return subscriptionRequiredResponse();
 
-    const { summary, chapter, course } = await request.json();
+    const { summary, chapter, course, difficulty } = await request.json();
+    const difficultyLabel = difficulty === "facile" ? "accessible, avec des questions directes et pédagogiques"
+      : difficulty === "avance" ? "exigeant, avec davantage d'application et de raisonnement"
+      : "équilibré, avec compréhension et application";
     const source = course
       ? `Cours structuré :\n${JSON.stringify(course, null, 2)}`
       : `Résumé disponible :\n${summary || "Aucun contenu détaillé disponible."}`;
@@ -107,7 +110,7 @@ Règles impératives :
         },
         {
           role: "user",
-          content: `Niveau scolaire enregistré : ${schoolClass || "Non renseigné (déduire uniquement du cours)"}\n\nCrée le quiz pour le chapitre suivant :
+          content: `Niveau scolaire enregistré : ${schoolClass || "Non renseigné (déduire uniquement du cours)"}\nDifficulté souhaitée : ${difficultyLabel}\n\nCrée le quiz pour le chapitre suivant :
 
 ${chapter || "Chapitre non renseigné"}
 
