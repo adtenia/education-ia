@@ -263,6 +263,12 @@ export default async function ProgressionPage() {
     currentStreak: numberValue(rawStats?.current_streak),
     longestStreak: numberValue(rawStats?.longest_streak),
   };
+  const priorityTopics = topicRows
+    .filter((topic) => numberValue(topic.answered_questions) >= 3 && topic.learning_status === "needs_review")
+    .sort((a, b) => numberValue(a.success_rate) - numberValue(b.success_rate))
+    .slice(0, 3);
+  const improvingAttempts = chronologicalAttempts.filter((attempt) => attempt.delta !== null);
+  const positiveChanges = improvingAttempts.filter((attempt) => (attempt.delta ?? 0) > 0).length;
   const hasData = rawEvents.length > 0 || stats.totalCourses + stats.totalQuizzes + stats.totalRevisionSheets + stats.totalMindMaps > 0;
 
   return (
@@ -288,6 +294,33 @@ export default async function ProgressionPage() {
           </section>
         ) : (
           <div className="mt-12 space-y-8">
+            <section className="rounded-[2rem] border border-violet-200 bg-gradient-to-br from-violet-100 via-white to-white p-6 shadow-sm sm:p-8">
+              <p className="text-xs font-black uppercase tracking-widest text-violet-700">Analyse personnalisée</p>
+              <h2 className="mt-2 text-2xl font-black text-slate-950">Ce que tes résultats disent vraiment</h2>
+              <p className="mt-2 text-sm text-slate-600">Des conseils calculés à partir de tes réponses enregistrées, sans nouvelle génération IA.</p>
+              <div className="mt-6 grid gap-4 md:grid-cols-3">
+                <div className="rounded-2xl bg-white p-5 shadow-sm">
+                  <p className="text-sm font-bold text-slate-500">Évolution des quiz</p>
+                  <p className="mt-2 text-3xl font-black">{improvingAttempts.length ? `${positiveChanges}/${improvingAttempts.length}` : "—"}</p>
+                  <p className="mt-2 text-xs text-slate-500">Tentatives avec un score en hausse, parmi celles comparables à un essai précédent</p>
+                </div>
+                <div className="rounded-2xl bg-white p-5 shadow-sm">
+                  <p className="text-sm font-bold text-slate-500">Notions à renforcer</p>
+                  <p className="mt-2 text-3xl font-black">{topicRows.filter(t => t.learning_status === "needs_review").length}</p>
+                  <p className="mt-2 text-xs text-slate-500">Identifiées par tes réponses, si suffisamment de données sont disponibles</p>
+                </div>
+                <div className="rounded-2xl bg-white p-5 shadow-sm">
+                  <p className="text-sm font-bold text-slate-500">Points forts</p>
+                  <p className="mt-2 text-3xl font-black">{topicRows.filter(t => t.learning_status === "strength").length}</p>
+                  <p className="mt-2 text-xs text-slate-500">Notions que tu maîtrises déjà mieux</p>
+                </div>
+              </div>
+              <div className="mt-5 rounded-2xl bg-white p-5">
+                <h3 className="font-black">Ta prochaine action utile</h3>
+                {priorityTopics.length ? <div className="mt-3 space-y-2">{priorityTopics.map(t => <p key={t.topic_key} className="text-sm text-slate-700"><strong>{t.topic || t.topic_key.replaceAll("_"," ")}</strong> · {Math.round(numberValue(t.success_rate))}% de réussite · <Link href="/cours" className="font-bold text-violet-700 underline">Revoir mes cours</Link></p>)}</div>
+                  : <p className="mt-2 text-sm text-slate-600">Pas encore assez d'erreurs récurrentes pour identifier une priorité fiable. Continue les quiz, puis reviens voir ton bilan.</p>}
+              </div>
+            </section>
             <ProgressStats stats={stats} />
             <div className="grid gap-8 xl:grid-cols-[1.2fr_0.8fr]"><ProgressChart points={chartPoints} /><DailyActivity days={days} /></div>
             <QuizHistory attempts={attempts} />
