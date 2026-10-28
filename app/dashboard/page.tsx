@@ -66,6 +66,7 @@ export default async function DashboardPage({
 
   let chapters: ChapterWithProgress[] = [];
   let masteryPercent = 0;
+  let hasProgress = false;
 
   if (selectedSubjectRecord) {
     const { data: subjectChapters } = await supabase
@@ -88,6 +89,7 @@ export default async function DashboardPage({
       .maybeSingle();
 
     masteryPercent = progress?.mastery_percent ?? 0;
+    hasProgress = progress?.mastery_percent != null;
 
     const chapterIds = (subjectChapters ?? []).map((chapter) => chapter.id);
 
@@ -118,6 +120,9 @@ export default async function DashboardPage({
       })
       .filter((chapter) => chapter.courseCount > 0);
   }
+
+  const chaptersToReview = chapters.filter((chapter) => chapter.status === "a_reprendre" || chapter.status === "en_cours");
+  const reviewedCount = chapters.filter((chapter) => chapter.status === "maitrise").length;
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#fbfaff] px-4 py-8 text-slate-950 sm:px-8">
@@ -187,19 +192,20 @@ export default async function DashboardPage({
             <p className="text-sm font-bold text-slate-500">
               Chapitres à reprendre
             </p>
-            <p className="mt-3 text-4xl font-black">{chapters.length}</p>
+            <p className="mt-3 text-4xl font-black">{chaptersToReview.length}</p>
           </div>
 
-          <div className="rounded-[2rem] border border-violet-100 bg-white/85 p-6 shadow-sm">
+          <Link href="/cours" className="rounded-[2rem] border border-violet-100 bg-white/85 p-6 shadow-sm transition hover:border-violet-300 hover:shadow-lg focus-visible:outline-2 focus-visible:outline-violet-600">
             <p className="text-sm font-bold text-slate-500">Travail du jour</p>
-            <p className="mt-3 text-4xl font-black">Réviser</p>
-          </div>
+            <p className="mt-3 text-3xl font-black">Réviser →</p>
+            <p className="mt-2 text-sm text-slate-500">Choisis un cours pour commencer</p>
+          </Link>
 
           <div className="rounded-[2rem] border border-violet-100 bg-white/85 p-6 shadow-sm">
             <p className="text-sm font-bold text-slate-500">
               Progression globale
             </p>
-            <p className="mt-3 text-4xl font-black">{masteryPercent}%</p>
+            <p className="mt-3 text-4xl font-black">{hasProgress ? `${masteryPercent}%` : "—"}</p>
           </div>
         </section>
 
@@ -235,7 +241,7 @@ export default async function DashboardPage({
             </div>
 
             <span className="rounded-full bg-violet-50 px-5 py-3 text-sm font-black text-violet-700">
-              {chapters.length} en cours
+              {chaptersToReview.length} à revoir · {reviewedCount} maîtrisé(s)
             </span>
           </div>
 
