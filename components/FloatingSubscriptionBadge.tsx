@@ -28,7 +28,7 @@ export default function FloatingSubscriptionBadge() {
   useEffect(() => {
     const controller = new AbortController();
 
-    void fetch("/api/subscription/status", { signal: controller.signal })
+    void fetch("/api/subscription/status", { signal: controller.signal, cache: "no-store" })
       .then(async (response) => {
         if (!response.ok) return null;
         return (await response.json()) as SubscriptionStatus;
@@ -51,7 +51,7 @@ export default function FloatingSubscriptionBadge() {
       controller.abort();
       window.removeEventListener("educationia:subscription-updated", handleSubscriptionUpdate);
     };
-  }, []);
+  }, [pathname]);
 
   if (HIDDEN_ROUTES.has(pathname) || !plan) return null;
 
